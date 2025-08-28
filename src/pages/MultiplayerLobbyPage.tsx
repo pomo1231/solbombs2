@@ -10,6 +10,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { startPvpOnchain, isOnchainConfigured } from '@/lib/sol/anchorClient';
 import { generateAvatarUrl } from '@/lib/utils';
 import { useSocket } from '@/context/SocketContext';
+import { useSolPrice } from '@/hooks/useSolPrice';
 
 interface GameSettings {
   bombs: number;
@@ -33,6 +34,8 @@ export function MultiplayerLobbyPage({ onStartGame }: MultiplayerLobbyPageProps)
   const [bombs, setBombs] = useState('3');
   const [amount, setAmount] = useState(0.01);
   const [creating, setCreating] = useState(false);
+  const { price: solUsd } = useSolPrice();
+  const [amountInput, setAmountInput] = useState<string>(String(0.01));
   
   const [createdGame, setCreatedGame] = useState<any>(null);
   const [showBotOption, setShowBotOption] = useState(false);
@@ -195,14 +198,26 @@ export function MultiplayerLobbyPage({ onStartGame }: MultiplayerLobbyPageProps)
                 <div className="flex-1">
                     <label className="block mb-1 text-sm font-medium">Entry Amount (SOL)</label>
                     <Input 
-                        type="number"
-                        min={0.001}
-                        step={0.001}
-                        value={amount}
-                        onChange={e => setAmount(Number(e.target.value))}
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0"
+                        value={amountInput}
+                        onChange={e => {
+                          const raw = e.target.value.replace(',', '.');
+                          if (/^\d*(\.\d*)?$/.test(raw)) {
+                            setAmountInput(raw);
+                            if (raw === '' || raw === '.') {
+                              setAmount(0);
+                            } else {
+                              const num = parseFloat(raw);
+                              if (Number.isFinite(num)) setAmount(num);
+                            }
+                          }
+                        }}
                         className="w-full bg-input border border-border rounded-lg px-3 py-2 text-foreground"
                         disabled={creating}
                     />
+                    <div className="mt-1 text-xs text-muted-foreground">≈ ${solUsd ? (amount * solUsd).toFixed(2) : '—'} USD</div>
                 </div>
                 <div className="flex-1">
                     <label className="block mb-1 text-sm font-medium">Bombs</label>
@@ -247,9 +262,10 @@ export function MultiplayerLobbyPage({ onStartGame }: MultiplayerLobbyPageProps)
              </div>
              <div className="flex items-center gap-6">
                <div className="text-right">
-                 <div className="font-bold text-neon-cyan text-lg">{game.betAmount.toFixed(3)} SOL</div>
-                 <div className="text-xs text-muted-foreground">Waiting...</div>
-               </div>
+                <div className="font-bold text-neon-cyan text-lg">{game.betAmount.toFixed(3)} SOL</div>
+                <div className="text-xs text-muted-foreground">≈ ${solUsd ? (game.betAmount * solUsd).toFixed(2) : '—'} USD</div>
+                <div className="text-xs text-muted-foreground">Waiting...</div>
+              </div>
                <Button variant="neon" onClick={() => handleJoin(game)}>Join</Button>
                <Button variant="ghost" size="icon"><Eye className="w-5 h-5" /></Button>
              </div>

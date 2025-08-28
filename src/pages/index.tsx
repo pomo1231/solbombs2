@@ -46,7 +46,7 @@ export default function Index() {
   };
 
   return (
-    <div className="flex-1 p-4">
+    <div className="container mx-auto flex-1 px-4 sm:px-6 lg:px-8 py-4">
       {activeTab === '1v1' ? renderMultiplayerContent() : <MinesGame mode="solo" onBack={() => {}} />}
     </div>
   );

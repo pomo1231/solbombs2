@@ -61,8 +61,8 @@ const LiveChat: FC<LiveChatProps> = ({ wallet, isConnected }) => {
 
   const backgroundStyle = {
     background: isHovered
-      ? `radial-gradient(circle at ${mousePos.x}px ${mousePos.y}px, rgba(59, 130, 246, 0.2) 0%, transparent 50%), #1e1f22`
-      : '#1e1f22',
+      ? `radial-gradient(circle at ${mousePos.x}px ${mousePos.y}px, rgba(59, 130, 246, 0.2) 0%, transparent 50%), #18191c`
+      : '#18191c',
     transition: 'background 0.2s ease-out',
   };
 
@@ -198,7 +198,7 @@ const LiveChat: FC<LiveChatProps> = ({ wallet, isConnected }) => {
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         style={backgroundStyle}
-        className="h-24 flex flex-row items-center justify-center gap-2 relative overflow-hidden border-b-2 border-zinc-900"
+        className="h-24 flex flex-row items-center justify-center gap-2 relative overflow-hidden border-b border-white/10"
       >
         <img src={casinoLogo} alt="Casino Logo" className="w-24 h-24 drop-shadow-[0_0_10px_rgba(99,102,241,0.7)]" />
         <h1 className="font-extrabold text-2xl text-white tracking-wide">SolBombs</h1>

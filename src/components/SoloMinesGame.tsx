@@ -9,6 +9,7 @@ import { PublicKey } from '@solana/web3.js';
 import { Slider } from './ui/slider';
 import crypto from 'crypto-js';
 import { startSoloOnchain, cashOutOnchain, isOnchainConfigured, getTreasuryBalance, revealSafeOnchain } from '@/lib/sol/anchorClient';
+import { useSolPrice } from '@/hooks/useSolPrice';
 
 interface Tile {
   id: number;
@@ -162,6 +163,7 @@ function generateBombLocations(serverSeed: string, clientSeed: string, nonce: nu
 
 export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
     const { toast } = useToast();
+    const { price: solUsd } = useSolPrice();
     const { addGame, userProfile, totalGames } = useStats();
     const walletCtx = useWallet();
     const { connected, publicKey } = walletCtx;
@@ -172,6 +174,7 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
     const [gameNonce, setGameNonce] = useState<number | null>(null);
     const [claiming, setClaiming] = useState(false);
     const [isRevealing, setIsRevealing] = useState(false);
+    const [betInput, setBetInput] = useState<string>(String(initialState.betAmount));
 
     const {
         gameState,
@@ -324,7 +327,10 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
         setGameNonce(null);
     };
 
-    const handleBetAmountChange = (value: number) => dispatch({ type: 'SET_BET_AMOUNT', payload: value });
+    const handleBetAmountChange = (value: number) => {
+        dispatch({ type: 'SET_BET_AMOUNT', payload: value });
+        setBetInput(formatSol3(value));
+    };
     const handleBombCountChange = (value: number) => dispatch({ type: 'SET_BOMB_COUNT', payload: value });
 
     const maxBpsRender = calculateMaxMultiplierBpsInt(safeRevealed, bombCount);
@@ -372,9 +378,51 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
                                 <div>
                                     <label className="text-sm text-muted-foreground mb-2 block">Bet Amount (SOL)</label>
                                     <div className="flex items-center gap-2">
-                                        <input type="number" step="0.01" min="0.01" max="10" value={betAmount} onChange={(e) => handleBetAmountChange(Number(e.target.value))} className="w-full bg-input border border-border rounded-lg px-3 py-2 text-foreground" />
-                                        <Button variant="outline" className="px-3" onClick={() => handleBetAmountChange(Math.max(0.01, parseFloat((betAmount / 2).toFixed(4))))}>1/2</Button>
-                                        <Button variant="outline" className="px-3" onClick={() => handleBetAmountChange(Math.min(10, parseFloat((betAmount * 2).toFixed(4))))}>x2</Button>
+                                        <input
+                                          type="text"
+                                          inputMode="decimal"
+                                          placeholder="0"
+                                          value={betInput}
+                                          onChange={(e) => {
+                                            const raw = e.target.value.replace(',', '.');
+                                            // allow empty, '.', '1', '1.', '1.2'
+                                            if (/^\d*(\.\d*)?$/.test(raw)) {
+                                              setBetInput(raw);
+                                              if (raw === '' || raw === '.') {
+                                                dispatch({ type: 'SET_BET_AMOUNT', payload: 0 });
+                                              } else {
+                                                const num = parseFloat(raw);
+                                                if (Number.isFinite(num)) {
+                                                  dispatch({ type: 'SET_BET_AMOUNT', payload: num });
+                                                }
+                                              }
+                                            }
+                                          }}
+                                          className="w-full bg-input border border-border rounded-lg px-3 py-2 text-foreground"
+                                        />
+                                        <Button
+                                          variant="outline"
+                                          className="px-3"
+                                          onClick={() => {
+                                            const newVal = Math.max(0.01, parseFloat((betAmount / 2).toFixed(4)));
+                                            handleBetAmountChange(newVal);
+                                          }}
+                                        >
+                                          1/2
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          className="px-3"
+                                          onClick={() => {
+                                            const newVal = Math.min(10, parseFloat((betAmount * 2).toFixed(4)));
+                                            handleBetAmountChange(newVal);
+                                          }}
+                                        >
+                                          x2
+                                        </Button>
+                                    </div>
+                                    <div className="mt-1 text-xs text-muted-foreground">
+                                      ≈ ${solUsd && Number.isFinite(betAmount * solUsd) ? (betAmount * solUsd).toFixed(2) : '—'} USD
                                     </div>
                                 </div>
                                 <div>

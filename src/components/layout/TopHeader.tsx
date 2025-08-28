@@ -14,7 +14,7 @@ const TopHeader = () => {
   };
 
   return (
-    <div className="h-8 bg-black w-full flex items-center justify-between px-4 border-b border-white/10">
+    <div className="h-8 bg-[#18191c] w-full flex items-center justify-between px-4 border-b border-white/10">
       <div className="flex items-center space-x-6 text-xs font-medium">
         <button
           onClick={() => navigate('/provably-fair')}

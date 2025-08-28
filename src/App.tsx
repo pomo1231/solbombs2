@@ -17,6 +17,7 @@ import TransactionsPage from './pages/Transactions';
 import ProvablyFairPage from './pages/ProvablyFair';
 import TermsOfServicePage from './pages/TermsOfService';
 import SupportPage from './pages/Support';
+import BackgroundFX from './components/BackgroundFX';
 
 export function App() {
   const { publicKey, connected } = useWallet();
@@ -37,11 +38,12 @@ export function App() {
   const Layout = ({ children }: { children: React.ReactNode }) => {
     return (
       <div className="min-h-screen bg-background relative flex">
+        <BackgroundFX />
         <LiveChat wallet={wallet} isConnected={isConnected} />
         <div className="flex-1 flex flex-col" style={{ marginLeft: 320 }}>
           <TopHeader />
           <GameNav />
-          <main className="flex-1 overflow-y-auto px-6">
+          <main className="flex-1 overflow-y-auto px-6 py-6">
             {children}
           </main>
         </div>
