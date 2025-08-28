@@ -1,0 +1,396 @@
+{
+  "version": "0.1.0",
+  "name": "solbombs",
+  "instructions": [
+    {
+      "name": "startSolo",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "game",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasury",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "gameNonce",
+          "type": "u8"
+        },
+        {
+          "name": "wagerLamports",
+          "type": "u64"
+        },
+        {
+          "name": "bombs",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "convertPvpToRobot",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "pvpGame",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasury",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "revealSafe",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "game",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cashOut",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "game",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasury",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "resolveLoss",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "game",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasury",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "startPvp",
+      "accounts": [
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "pvpGame",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasury",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "gameNonce",
+          "type": "u8"
+        },
+        {
+          "name": "wagerLamports",
+          "type": "u64"
+        },
+        {
+          "name": "vsRobot",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "joinPvp",
+      "accounts": [
+        {
+          "name": "joiner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "pvpGame",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasury",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "resolvePvp",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "pvpGame",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasury",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creatorAccount",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Recipient accounts"
+          ]
+        },
+        {
+          "name": "joinerAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "winnerSide",
+          "type": "u8"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "GameState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "gameNonce",
+            "type": "u8"
+          },
+          {
+            "name": "wagerLamports",
+            "type": "u64"
+          },
+          {
+            "name": "bombs",
+            "type": "u8"
+          },
+          {
+            "name": "safeRevealed",
+            "type": "u8"
+          },
+          {
+            "name": "resolved",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PvpGameState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "creator",
+            "type": "publicKey"
+          },
+          {
+            "name": "joiner",
+            "type": "publicKey"
+          },
+          {
+            "name": "hasJoiner",
+            "type": "bool"
+          },
+          {
+            "name": "gameNonce",
+            "type": "u8"
+          },
+          {
+            "name": "wagerLamports",
+            "type": "u64"
+          },
+          {
+            "name": "vsRobot",
+            "type": "bool"
+          },
+          {
+            "name": "resolved",
+            "type": "bool"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "WagerTooSmall",
+      "msg": "Wager below minimum."
+    },
+    {
+      "code": 6001,
+      "name": "AlreadyResolved",
+      "msg": "Game already resolved."
+    },
+    {
+      "code": 6002,
+      "name": "BadAuthority",
+      "msg": "Bad authority."
+    },
+    {
+      "code": 6003,
+      "name": "MathOverflow",
+      "msg": "Math overflow."
+    },
+    {
+      "code": 6004,
+      "name": "InvalidBombCount",
+      "msg": "Invalid bomb count (must be 1-24)."
+    },
+    {
+      "code": 6005,
+      "name": "TooManySafeRevealed",
+      "msg": "Too many safe tiles revealed."
+    },
+    {
+      "code": 6006,
+      "name": "NoSafeRevealed",
+      "msg": "No safe tiles revealed yet."
+    },
+    {
+      "code": 6007,
+      "name": "MultiplierTooHigh",
+      "msg": "Multiplier too high for revealed tiles."
+    },
+    {
+      "code": 6008,
+      "name": "InsufficientTreasury",
+      "msg": "Treasury has insufficient funds for payout."
+    },
+    {
+      "code": 6009,
+      "name": "AlreadyHasJoiner",
+      "msg": "Game already has a joiner."
+    },
+    {
+      "code": 6010,
+      "name": "HumanJoinNotAllowedForRobot",
+      "msg": "Cannot join a robot game as human."
+    },
+    {
+      "code": 6011,
+      "name": "NoJoiner",
+      "msg": "No joiner present."
+    },
+    {
+      "code": 6012,
+      "name": "InvalidWinner",
+      "msg": "Invalid winner."
+    }
+  ],
+  "metadata": {
+    "address": "7TMfKWSr4RFSPLvFzcWvsqBeEUXM8yu76dxaj2qY1EXy"
+  }
+}
