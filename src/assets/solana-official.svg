@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="solanaGradient" x1="0" y1="256" x2="256" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00FFA3"/>
+      <stop offset="1" stop-color="#DC1FFF"/>
+    </linearGradient>
+  </defs>
+  <!-- Three slanted rounded bars (official logomark style) -->
+  <g transform="skewX(-12)">
+    <rect x="24" y="36" width="200" height="44" rx="22" fill="url(#solanaGradient)"/>
+    <rect x="40" y="106" width="200" height="44" rx="22" fill="url(#solanaGradient)"/>
+    <rect x="24" y="176" width="200" height="44" rx="22" fill="url(#solanaGradient)"/>
+  </g>
+</svg>

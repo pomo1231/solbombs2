@@ -141,3 +141,37 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Wallet button styling */
+.wallet-connect-wrapper .wallet-btn {
+  @apply rounded-full px-4 py-2 bg-[#1e1f22]/70 text-white border border-white/10 backdrop-blur-md transition-all duration-200 ease-out;
+  box-shadow: 0 8px 30px rgba(99,102,241,0.15);
+  position: relative;
+  isolation: isolate;
+}
+
+.wallet-connect-wrapper .wallet-btn:hover {
+  @apply bg-white/10 border-indigo-400/30;
+  box-shadow: 0 10px 36px rgba(99,102,241,0.28), 0 0 0 1px rgba(99,102,241,0.12) inset;
+}
+
+.wallet-connect-wrapper .wallet-btn::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.45), rgba(20,241,149,0.45));
+  filter: blur(10px);
+  opacity: 0;
+  transition: opacity .2s ease-out;
+  z-index: -1;
+}
+
+.wallet-connect-wrapper .wallet-btn:hover::before {
+  opacity: 1;
+}
+
+/* Normalize inner spans for wallet-adapter button */
+.wallet-connect-wrapper .wallet-btn > span {
+  @apply flex items-center gap-2;
+}

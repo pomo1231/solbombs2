@@ -27,8 +27,8 @@ interface Message {
   level: number;
 }
 
-// Prefer configurable websocket URL; fall back to localhost only in dev
-const WS_URL = (import.meta as any).env?.VITE_WS_URL || (window.location.hostname === 'localhost' ? `ws://${window.location.hostname}:8080` : '');
+// Prefer configurable websocket URL; default to 8081 to match server.js
+const WS_URL = (import.meta as any).env?.VITE_WS_URL || `ws://${window.location.hostname}:8081`;
 
 const LiveChat: FC<LiveChatProps> = ({ wallet, isConnected }) => {
   const navigate = useNavigate();
@@ -145,6 +145,7 @@ const LiveChat: FC<LiveChatProps> = ({ wallet, isConnected }) => {
     setMessages((prev) => [...prev, msg]);
 
     ws.current.send(JSON.stringify({ 
+        type: 'chatMessage',
         from: wallet, 
         text: input, 
         name: senderName,

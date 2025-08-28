@@ -10,6 +10,7 @@ import { Slider } from './ui/slider';
 import crypto from 'crypto-js';
 import { startSoloOnchain, cashOutOnchain, isOnchainConfigured, getTreasuryBalance, revealSafeOnchain } from '@/lib/sol/anchorClient';
 import { useSolPrice } from '@/hooks/useSolPrice';
+import { useSound } from '@/context/SoundContext';
 
 interface Tile {
   id: number;
@@ -167,6 +168,7 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
     const { addGame, userProfile, totalGames } = useStats();
     const walletCtx = useWallet();
     const { connected, publicKey } = walletCtx;
+    const { play } = useSound();
     const [state, dispatch] = useReducer(gameReducer, initialState);
     const prevGameState = useRef(state.gameState);
     const [serverSeed, setServerSeed] = useState('');
@@ -258,10 +260,14 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
 
         // If bomb -> immediate finish
         if (newTiles[tileId].isBomb) {
+            try { play('bomb'); } catch {}
             dispatch({ type: 'SET_GAME_STATE', payload: 'finished' });
             setGamePda(null);
             return;
         }
+
+        // Safe reveal -> play diamond chime
+        try { play('diamond'); } catch {}
 
         // Auto-claim if all safe tiles are revealed
         const maxSafe = 25 - bombCount;

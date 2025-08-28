@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, FC, useRef } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 
-const WS_URL = `ws://${window.location.hostname}:8080`;
+const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:8081`;
 
 interface Lobby {
     id: string;

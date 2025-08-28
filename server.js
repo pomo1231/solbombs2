@@ -1,7 +1,8 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 
-const wss = new WebSocketServer({ port: 8080 });
+const PORT = process.env.PORT ? Number(process.env.PORT) : 8081;
+const wss = new WebSocketServer({ port: PORT });
 
 // In-memory data stores
 let lobbies = [];
@@ -82,4 +83,12 @@ wss.on('connection', function connection(ws) {
     });
 });
 
-console.log('WebSocket server running on ws://localhost:8080'); 
+wss.on('error', (err) => {
+  if (/** @type {any} */(err).code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Set a different PORT env var to run the server on another port.`);
+  } else {
+    console.error('WebSocket server error:', err);
+  }
+});
+
+console.log(`WebSocket server running on ws://localhost:${PORT}`);

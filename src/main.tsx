@@ -19,6 +19,7 @@ import { App } from './App';
 import { HeaderProvider } from '@/context/HeaderContext';
 import { XPProvider } from '@/context/XPContext';
 import { SocketProvider } from '@/context/SocketContext';
+import { SoundProvider } from '@/context/SoundContext';
 
 const queryClient = new QueryClient();
 
@@ -93,9 +94,11 @@ function AppProviders() {
                   <TooltipProvider>
                     <Toaster />
                     <Sonner />
-                    <HeaderProvider>
-                      <App />
-                    </HeaderProvider>
+                    <SoundProvider>
+                      <HeaderProvider>
+                        <App />
+                      </HeaderProvider>
+                    </SoundProvider>
                   </TooltipProvider>
                 </QueryClientProvider>
               </SocketProvider>
