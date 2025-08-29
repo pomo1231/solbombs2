@@ -1,26 +1,14 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStats } from "@/context/StatsContext";
-import { Trash2 } from 'lucide-react';
 import { SolanaLogo } from "@/components/SolanaLogo";
-import { toast } from '@/hooks/use-toast';
 
 const StatisticsPage = () => {
     const { 
         totalWagered, 
         netProfit, 
         gameHistory,
-        resetStats,
     } = useStats();
-
-    const handleResetStats = () => {
-        resetStats();
-        toast({
-            title: "Statistics Reset",
-            description: "Your game history and stats have been cleared.",
-        });
-    };
 
     const chartData = gameHistory.slice().reverse().map((game, index) => ({
         game: index + 1,
@@ -93,12 +81,7 @@ const StatisticsPage = () => {
                 </div>
             </div>
             
-            <div className="pt-4 flex justify-start">
-                <Button variant="destructive" onClick={handleResetStats}>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Reset Stats
-                </Button>
-            </div>
+            {/* Reset button removed to ensure stats/level cannot be cleared from UI */}
         </div>
     </div>
   );

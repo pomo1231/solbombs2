@@ -87,9 +87,9 @@ function AppProviders() {
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect={autoConnect}>
         <WalletModalProvider>
-          <StatsProvider>
-            <XPProvider>
-              <SocketProvider>
+          <SocketProvider>
+            <StatsProvider>
+              <XPProvider>
                 <QueryClientProvider client={queryClient}>
                   <TooltipProvider>
                     <Toaster />
@@ -101,9 +101,9 @@ function AppProviders() {
                     </SoundProvider>
                   </TooltipProvider>
                 </QueryClientProvider>
-              </SocketProvider>
-            </XPProvider>
-          </StatsProvider>
+              </XPProvider>
+            </StatsProvider>
+          </SocketProvider>
         </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>

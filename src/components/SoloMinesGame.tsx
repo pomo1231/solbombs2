@@ -43,6 +43,7 @@ type Action =
   | { type: 'RESET_GAME' }
   | { type: 'INITIALIZE_GAME'; payload: { bombCount: number, tiles: Tile[], wagerLamports: number } }
   | { type: 'REVEAL_TILE'; payload: { tileId: number } }
+  | { type: 'LOAD_STATE'; payload: Partial<typeof initialState> & { tiles?: Tile[] } }
   | { type: 'CASH_OUT' };
 
 function gameReducer(state: typeof initialState, action: Action): typeof initialState {
@@ -106,6 +107,12 @@ function gameReducer(state: typeof initialState, action: Action): typeof initial
             currentMultiplier: newMultiplier,
         };
     }
+    case 'LOAD_STATE':
+        return {
+            ...state,
+            ...action.payload,
+            tiles: action.payload.tiles ?? state.tiles,
+        };
     case 'CASH_OUT':
         return {
             ...state,
@@ -169,11 +176,50 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
     const walletCtx = useWallet();
     const { connected, publicKey } = walletCtx;
     const { play } = useSound();
-    const [state, dispatch] = useReducer(gameReducer, initialState);
+    const LS_SOLO_KEY = 'solo_game_state_v1';
+    const [state, dispatch] = useReducer(gameReducer, initialState, (base) => {
+        // Synchronous hydration to avoid initial blank state overriding progress
+        try {
+            const raw = localStorage.getItem(LS_SOLO_KEY);
+            if (raw) {
+                const saved = JSON.parse(raw);
+                const merged = {
+                    ...base,
+                    gameState: saved.gameState ?? base.gameState,
+                    betAmount: typeof saved.betAmount === 'number' ? saved.betAmount : base.betAmount,
+                    bombCount: typeof saved.bombCount === 'number' ? saved.bombCount : base.bombCount,
+                    tiles: Array.isArray(saved.tiles) ? saved.tiles : base.tiles,
+                    currentMultiplier: typeof saved.currentMultiplier === 'number' ? saved.currentMultiplier : base.currentMultiplier,
+                    safeRevealed: typeof saved.safeRevealed === 'number' ? saved.safeRevealed : base.safeRevealed,
+                    wagerLamports: typeof saved.wagerLamports === 'number' ? saved.wagerLamports : base.wagerLamports,
+                } as typeof initialState;
+                return merged;
+            }
+        } catch {}
+        return base;
+    });
     const prevGameState = useRef(state.gameState);
-    const [serverSeed, setServerSeed] = useState('');
-    const [gamePda, setGamePda] = useState<PublicKey | null>(null);
-    const [gameNonce, setGameNonce] = useState<number | null>(null);
+    const [serverSeed, setServerSeed] = useState<string>(() => {
+        try {
+            const raw = localStorage.getItem(LS_SOLO_KEY);
+            if (raw) { const saved = JSON.parse(raw); return saved.serverSeed || ''; }
+        } catch {}
+        return '';
+    });
+    const [gamePda, setGamePda] = useState<PublicKey | null>(() => {
+        try {
+            const raw = localStorage.getItem(LS_SOLO_KEY);
+            if (raw) { const saved = JSON.parse(raw); if (saved.gamePda) return new PublicKey(saved.gamePda); }
+        } catch {}
+        return null;
+    });
+    const [gameNonce, setGameNonce] = useState<number | null>(() => {
+        try {
+            const raw = localStorage.getItem(LS_SOLO_KEY);
+            if (raw) { const saved = JSON.parse(raw); if (typeof saved.gameNonce === 'number') return saved.gameNonce; }
+        } catch {}
+        return null;
+    });
     const [claiming, setClaiming] = useState(false);
     const [isRevealing, setIsRevealing] = useState(false);
     const [betInput, setBetInput] = useState<string>(String(initialState.betAmount));
@@ -187,6 +233,64 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
         safeRevealed,
     } = state;
   const wagerLamports = state.wagerLamports;
+
+    // Restore on mount (and when wallet changes) - only if in playing state
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem(LS_SOLO_KEY);
+            if (!raw) return;
+            const saved = JSON.parse(raw);
+            const currentWallet = walletCtx.publicKey?.toBase58?.() || null;
+            if (!saved) return;
+            // Only block restore if both saved and current wallets exist and they differ
+            if (saved.wallet && currentWallet && saved.wallet !== currentWallet) return;
+            // Only restore if the saved game was actually in progress
+            if (saved.gameState !== 'playing') return;
+
+            // Restore component locals
+            if (saved.serverSeed) setServerSeed(saved.serverSeed);
+            if (saved.gamePda) {
+                try { setGamePda(new PublicKey(saved.gamePda)); } catch {}
+            }
+            if (typeof saved.gameNonce === 'number') setGameNonce(saved.gameNonce);
+
+            // Restore reducer state
+            const restored: Partial<typeof initialState> = {
+                gameState: saved.gameState,
+                betAmount: typeof saved.betAmount === 'number' ? saved.betAmount : initialState.betAmount,
+                bombCount: typeof saved.bombCount === 'number' ? saved.bombCount : initialState.bombCount,
+                tiles: Array.isArray(saved.tiles) ? saved.tiles : undefined,
+                currentMultiplier: typeof saved.currentMultiplier === 'number' ? saved.currentMultiplier : 1.0,
+                safeRevealed: typeof saved.safeRevealed === 'number' ? saved.safeRevealed : 0,
+                wagerLamports: typeof saved.wagerLamports === 'number' ? saved.wagerLamports : 0,
+            };
+            dispatch({ type: 'LOAD_STATE', payload: restored });
+            if (typeof restored.betAmount === 'number') setBetInput(formatSol3(restored.betAmount));
+        } catch {}
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [walletCtx.publicKey]);
+
+    // Persist on state/locals change
+    useEffect(() => {
+        try {
+            const walletStr = walletCtx.publicKey?.toBase58?.() || null;
+            const payload = {
+                wallet: walletStr,
+                gameState: state.gameState,
+                betAmount: state.betAmount,
+                bombCount: state.bombCount,
+                tiles: state.tiles,
+                currentMultiplier: state.currentMultiplier,
+                safeRevealed: state.safeRevealed,
+                wagerLamports: state.wagerLamports,
+                serverSeed,
+                gamePda: gamePda ? gamePda.toBase58() : null,
+                gameNonce,
+                ts: Date.now(),
+            };
+            localStorage.setItem(LS_SOLO_KEY, JSON.stringify(payload));
+        } catch {}
+    }, [state, serverSeed, gamePda, gameNonce, walletCtx.publicKey]);
 
     useEffect(() => {
         if (prevGameState.current === 'playing' && gameState === 'finished') {
@@ -243,6 +347,29 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
             const bombPositions = new Set<number>(bombLocations);
             const newTiles = Array.from({ length: 25 }, (_, i) => ({ id: i, isRevealed: false, isBomb: bombPositions.has(i), isSelected: false }));
             dispatch({ type: 'INITIALIZE_GAME', payload: { bombCount, tiles: newTiles, wagerLamports: lamports } });
+            
+            // Force save the PDA immediately after successful transaction
+            try {
+                const walletStr = walletCtx.publicKey?.toBase58?.() || null;
+                const payload = {
+                    wallet: walletStr,
+                    gameState: 'playing',
+                    betAmount,
+                    bombCount,
+                    tiles: newTiles,
+                    currentMultiplier: 1.0,
+                    safeRevealed: 0,
+                    wagerLamports: lamports,
+                    serverSeed: newServerSeed,
+                    gamePda: res.gamePda.toBase58(),
+                    gameNonce: res.gameNonce,
+                    ts: Date.now(),
+                };
+                localStorage.setItem(LS_SOLO_KEY, JSON.stringify(payload));
+                console.log('Saved game state with PDA:', res.gamePda.toBase58());
+            } catch (saveError) {
+                console.error('Failed to save game state:', saveError);
+            }
         } catch (e: any) {
             console.error('startSoloOnchain failed', e);
             toast({ title: 'Transaction failed', description: e?.message ?? String(e), variant: 'destructive' });
@@ -272,7 +399,15 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
         // Auto-claim if all safe tiles are revealed
         const maxSafe = 25 - bombCount;
         const newSafeCount = safeRevealed + 1;
-        if (newSafeCount >= maxSafe && !claiming && !isRevealing && gamePda) {
+        // Try recovering PDA if missing after refresh
+        let pdaForAuto: PublicKey | null = gamePda;
+        if (!pdaForAuto) {
+            try {
+                const raw = localStorage.getItem(LS_SOLO_KEY);
+                if (raw) { const saved = JSON.parse(raw); if (saved.gamePda) pdaForAuto = new PublicKey(saved.gamePda); }
+            } catch {}
+        }
+        if (newSafeCount >= maxSafe && !claiming && !isRevealing && pdaForAuto) {
             // Fire-and-forget to trigger wallet popup immediately
             (async () => {
                 try {
@@ -280,7 +415,7 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
                     const bps = calculateMaxMultiplierBpsInt(newSafeCount, bombCount);
                     const payoutLamports = Math.floor((wagerLamports || Math.round(betAmount * 1e9)) * bps / 10_000);
                     const payoutSolExact = payoutLamports / 1e9;
-                    await cashOutOnchain({ wallet: walletCtx as any, player: publicKey, gamePda, safeRevealedClient: newSafeCount });
+                    await cashOutOnchain({ wallet: walletCtx as any, player: publicKey, gamePda: pdaForAuto, safeRevealedClient: newSafeCount });
                     dispatch({ type: 'CASH_OUT' });
                     toast({ title: 'Winnings claimed! 💎', description: `Received ${formatSol3(payoutSolExact)} SOL in your wallet.` });
                     setGamePda(null);
@@ -304,7 +439,26 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
             toast({ title: 'Wallet Issue', description: 'Your wallet does not support sendTransaction.', variant: 'destructive' });
             return;
         }
-        if (!gamePda) {
+        // Recover PDA from localStorage if missing after refresh
+        let pdaForClaim: PublicKey | null = gamePda;
+        if (!pdaForClaim) {
+            try {
+                const raw = localStorage.getItem(LS_SOLO_KEY);
+                console.log('Attempting PDA recovery from localStorage:', raw);
+                if (raw) { 
+                    const saved = JSON.parse(raw); 
+                    console.log('Parsed saved data:', saved);
+                    if (saved.gamePda) {
+                        pdaForClaim = new PublicKey(saved.gamePda);
+                        console.log('Recovered PDA:', pdaForClaim.toBase58());
+                    }
+                }
+            } catch (e) {
+                console.error('PDA recovery failed:', e);
+            }
+        }
+        if (!pdaForClaim) {
+            console.error('No PDA available - gamePda:', gamePda, 'localStorage check completed');
             toast({ title: 'Missing game PDA', description: 'Could not locate game account on-chain.', variant: 'destructive' });
             return;
         }
@@ -315,7 +469,7 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
             const payoutLamports = Math.floor((wagerLamports || Math.round(betAmount * 1e9)) * bps / 10_000);
             const payoutSolExact = payoutLamports / 1e9;
 
-            await cashOutOnchain({ wallet: walletCtx as any, player: publicKey, gamePda, safeRevealedClient: safeRevealed });
+            await cashOutOnchain({ wallet: walletCtx as any, player: publicKey, gamePda: pdaForClaim, safeRevealedClient: safeRevealed });
             dispatch({ type: 'CASH_OUT' });
             toast({ title: 'Winnings claimed! 💎', description: `Received ${payoutSolExact.toFixed(3)} SOL in your wallet.` });
             setGamePda(null);
@@ -331,6 +485,8 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
         dispatch({ type: 'RESET_GAME' });
         setGamePda(null);
         setGameNonce(null);
+        setServerSeed('');
+        try { localStorage.removeItem(LS_SOLO_KEY); } catch {}
     };
 
     const handleBetAmountChange = (value: number) => {

@@ -25,13 +25,10 @@ export const useLevel = () => {
 
   useEffect(() => {
     // Recalculate level on load or when publicKey changes
-    if (storageKey) {
-        const saved = localStorage.getItem(storageKey);
-        const currentWagered = saved ? parseFloat(saved) : 0;
-        setTotalWagered(currentWagered);
-    } else {
-        setTotalWagered(0);
-    }
+    if (!storageKey) return; // don't clear on disconnect
+    const saved = localStorage.getItem(storageKey);
+    const currentWagered = saved ? parseFloat(saved) : 0;
+    setTotalWagered(currentWagered);
   }, [publicKey, storageKey]);
 
 
@@ -76,6 +73,15 @@ export const useLevel = () => {
     }
   }, [storageKey]);
 
+  // Hydrate from server-provided value (e.g., cross-device sync)
+  const hydrateWageredAmount = useCallback((amount: number) => {
+    if (typeof amount !== 'number' || !isFinite(amount) || amount < 0) return;
+    setTotalWagered(amount);
+    if (storageKey) {
+      localStorage.setItem(storageKey, String(amount));
+    }
+  }, [storageKey]);
+
   return {
     level,
     totalWagered,
@@ -83,5 +89,6 @@ export const useLevel = () => {
     currentLevelXp,
     addWageredAmount,
     resetWageredAmount,
+    hydrateWageredAmount,
   };
 }; 

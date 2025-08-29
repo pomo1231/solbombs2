@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 
+const WS_URL = (import.meta as any).env?.VITE_WS_URL || 'ws://localhost:8081';
+const HTTP_BASE = WS_URL.replace(/^ws(s?):\/\//, 'http$1://');
+
 type PriceResult = { price: number; source: string };
 
 async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit & { timeoutMs?: number } = {}) {
@@ -15,7 +18,7 @@ async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit & { 
 }
 
 async function getFromCoinGecko(): Promise<PriceResult> {
-  const res = await fetchWithTimeout('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd', { cache: 'no-cache' });
+  const res = await fetchWithTimeout(`${HTTP_BASE}/price?provider=coingecko`, { cache: 'no-cache' });
   if (!res.ok) throw new Error(`coingecko HTTP ${res.status}`);
   const data = await res.json();
   const p = data?.solana?.usd;
@@ -25,7 +28,7 @@ async function getFromCoinGecko(): Promise<PriceResult> {
 
 async function getFromJupiter(): Promise<PriceResult> {
   // Jupiter price v6
-  const res = await fetchWithTimeout('https://price.jup.ag/v6/price?ids=SOL', { cache: 'no-cache' });
+  const res = await fetchWithTimeout(`${HTTP_BASE}/price?provider=jupiter`, { cache: 'no-cache' });
   if (!res.ok) throw new Error(`jupiter HTTP ${res.status}`);
   const data = await res.json();
   const p = data?.data?.SOL?.price;
@@ -34,7 +37,7 @@ async function getFromJupiter(): Promise<PriceResult> {
 }
 
 async function getFromBinance(): Promise<PriceResult> {
-  const res = await fetchWithTimeout('https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT', { cache: 'no-cache' });
+  const res = await fetchWithTimeout(`${HTTP_BASE}/price?provider=binance`, { cache: 'no-cache' });
   if (!res.ok) throw new Error(`binance HTTP ${res.status}`);
   const data = await res.json();
   const p = Number(data?.price);

@@ -2,6 +2,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MultiplayerLobbyPage } from './MultiplayerLobbyPage';
 import { MinesGame } from '@/components/MinesGame';
 import { useState, useEffect } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
 
 interface GameSettings {
   bombs: number;
@@ -17,16 +18,22 @@ interface GameSettings {
 export default function Index() {
   const [searchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') === 'solo' ? 'solo' : '1v1';
+  const wallet = useWallet();
+  const LS_PVP_KEY = 'pvp_game_state_v1';
   
   const [multiplayerView, setMultiplayerView] = useState<'lobby' | 'game'>('lobby');
   const [gameSettings, setGameSettings] = useState<GameSettings | null>(null);
 
   const handleStartGame = (settings: GameSettings) => {
+    // Starting a truly new game: clear any persisted 1v1 state
+    try { localStorage.removeItem(LS_PVP_KEY); } catch {}
     setGameSettings(settings);
     setMultiplayerView('game');
   };
 
   const handleEndGame = () => {
+    // Returning to lobby: clear persisted 1v1 state so former game doesn't restore
+    try { localStorage.removeItem(LS_PVP_KEY); } catch {}
     setMultiplayerView('lobby');
     setGameSettings(null);
   };
@@ -37,6 +44,27 @@ export default function Index() {
       handleEndGame();
     }
   }, [activeTab, multiplayerView]);
+
+  // Auto-resume 1v1 game after refresh if saved state indicates a game in progress
+  useEffect(() => {
+    if (activeTab !== '1v1') return;
+    try {
+      const raw = localStorage.getItem(LS_PVP_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      const currentWallet = wallet.publicKey?.toBase58?.();
+      if (!saved || (saved.wallet && saved.wallet !== currentWallet)) return;
+      // Consider in-progress if not gameOver and minesPlaced (we prepared a board)
+      if (!saved.state || saved.state.gameOver !== false) return;
+      if (!saved.state.minesPlaced) return;
+      // Use saved settings to re-enter the game view
+      if (saved.settings) {
+        setGameSettings(saved.settings as GameSettings);
+        setMultiplayerView('game');
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, wallet.publicKey]);
 
   const renderMultiplayerContent = () => {
     if (multiplayerView === 'game' && gameSettings) {

@@ -332,15 +332,36 @@ export async function resolvePvpOnchain(params: {
     await program.provider.connection.confirmTransaction(signature, 'confirmed');
     return { signature };
   } catch (error: any) {
-    // Try to surface logs from error
+    // If we get an error here, it's often a race: tx may have landed, account now closed/resolved, but RPC returns a vague error.
+    // Mitigation: re-check the pvp account. If closed/not ours/resolved, map to benign AlreadyResolved.
     try {
       const logs = typeof error?.getLogs === 'function' ? await error.getLogs() : (error?.logs || []);
-      if (logs && logs.length) {
-        console.error('[resolvePvpOnchain] logs:', logs);
-        throw new Error(`Resolve PvP failed: ${error.message || error}. Logs: ${JSON.stringify(logs)}`);
-      }
+      if (logs && logs.length) console.error('[resolvePvpOnchain] logs:', logs);
     } catch (_) {}
-    console.error('[resolvePvpOnchain] error:', error);
+    try {
+      const info3 = await program.provider.connection.getAccountInfo(pvpGamePk);
+      const closedOrNotOurs = !info3 || (info3 && !info3.owner.equals(program.programId)) || (info3.data?.length ?? 0) < 8;
+      if (closedOrNotOurs) {
+        throw new Error('AlreadyResolved: pvp_game closed (claimed).');
+      }
+      try {
+        const acc3: any = (program.account as any)?.pvpGameState
+          ? await (program.account as any).pvpGameState.fetch(pvpGamePk)
+          : null;
+        if (!acc3 || acc3?.resolved === true) {
+          throw new Error('AlreadyResolved: pvp_game resolved/claimed.');
+        }
+      } catch (decodeErr: any) {
+        throw new Error('AlreadyResolved: pvp_game not decodable (claimed).');
+      }
+    } catch (benign: any) {
+      // Map various invalid param/argument wallet errors to benign already-resolved when account indicates closure
+      const em = error?.message || String(error || '');
+      if (/invalid\s*(param|argument|instruction)/i.test(em) || /blockhash\s*not\s*found|signature\s*verification\s*failed/i.test(em)) {
+        throw benign; // surface our benign AlreadyResolved message
+      }
+    }
+    console.error('[resolvePvpOnchain] error (non-benign):', error);
     throw new Error(`Resolve PvP failed: ${error?.message || String(error)}`);
   }
 }
