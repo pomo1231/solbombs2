@@ -20,6 +20,9 @@ interface Lobby {
     creatorAvatar?: string | null;
     joinerName?: string | null;
     joinerAvatar?: string | null;
+    // robot support
+    allowRobot?: boolean;
+    vsRobotActive?: boolean;
 }
 
 interface ISocketContext {
@@ -32,6 +35,8 @@ interface ISocketContext {
     putStats: (args: { wallet: string; payload: { totalWagered: number; gameHistory: any[] } }) => Promise<boolean>;
     getProfile: (wallet: string) => Promise<{ name?: string; email?: string; avatarUrl?: string; clientSeed?: string } | null>;
     putProfile: (args: { wallet: string; profile: { name?: string; email?: string; avatarUrl?: string; clientSeed?: string } }) => Promise<boolean>;
+    removeLobby: (lobbyId: string) => void;
+    markLobbyRobotActive: (args: { lobbyId?: string; pvpGamePda?: string; gameNonce?: number }) => void;
     setStartGameHandler?: (handler: ((payload: any) => void) | undefined) => void;
     setPvpMoveHandler?: (handler: ((payload: { lobbyId: string; tileId: number; by?: 'creator' | 'joiner' }) => void) | undefined) => void;
     setStartSpectateHandler?: (handler: ((payload: any) => void) | undefined) => void;
@@ -55,6 +60,25 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
     const gameOverHandlerRef = useRef<((payload: { lobbyId: string }) => void) | undefined>(undefined);
     const pfFinalSeedHandlerRef = useRef<((payload: { lobbyId: string; boardSeed: string; betAmount?: number; bombCount?: number; startsBy?: 'creator'|'joiner'; yourRole?: 'creator'|'joiner' }) => void) | undefined>(undefined);
     const winningsClaimedHandlerRef = useRef<((payload: { lobbyId: string }) => void) | undefined>(undefined);
+
+    const removeLobby = (lobbyId: string) => {
+        setLobbies((prev) => prev.filter(l => l.id !== lobbyId));
+    };
+
+    const markLobbyRobotActive = ({ lobbyId, pvpGamePda, gameNonce }: { lobbyId?: string; pvpGamePda?: string; gameNonce?: number }) => {
+        setLobbies((prev) => prev.map(l => {
+            const idMatch = lobbyId && l.id === lobbyId;
+            const pdaMatch = pvpGamePda && l.pvpGamePda === pvpGamePda;
+            const nonceMatch = typeof gameNonce === 'number' && l.gameNonce === gameNonce;
+            if (!(idMatch || pdaMatch || nonceMatch)) return l;
+            return {
+                ...l,
+                vsRobotActive: true,
+                joinerName: 'Robot',
+                joinerAvatar: l.joinerAvatar || null,
+            };
+        }));
+    };
 
     useEffect(() => {
         const g = window as any;
@@ -82,6 +106,7 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 // Request initial lobby list on connect
                 try { ws.current?.send(JSON.stringify({ type: 'getLobbies' })); } catch {}
             };
+
             ws.current.onclose = () => {
                 console.log('WebSocket disconnected');
                 setReady(false);
@@ -112,27 +137,61 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
                     }
                     case 'pvpMove': {
                         const h = pvpMoveHandlerRef.current;
+                        try { console.log('[WS] pvpMove <-', data); } catch {}
                         if (h) h({ lobbyId: data.lobbyId, tileId: data.tileId, by: data.by });
                         break;
                     }
                     case 'startSpectate': {
                         const h = startSpectateHandlerRef.current;
+                        try { console.log('[WS] startSpectate <-', data); } catch {}
                         if (h) h(data);
                         break;
                     }
                     case 'gameOver': {
                         const h = gameOverHandlerRef.current;
                         if (h) h({ lobbyId: data.lobbyId });
+                        // Remove lobby instantly so cards disappear without refresh
+                        setLobbies((prev) => prev.filter(l => l.id !== data.lobbyId));
                         break;
                     }
                     case 'pfFinalSeed': {
                         const h = pfFinalSeedHandlerRef.current;
+                        try { console.log('[WS] pfFinalSeed <-', data); } catch {}
                         if (h) h({ lobbyId: data.lobbyId, boardSeed: data.boardSeed, betAmount: data.betAmount, bombCount: data.bombCount, startsBy: data.startsBy, yourRole: data.yourRole });
                         break;
                     }
                     case 'winningsClaimed': {
                         const h = winningsClaimedHandlerRef.current;
                         if (h) h({ lobbyId: data.lobbyId });
+                        // Remove lobby once payout is claimed
+                        setLobbies((prev) => prev.filter(l => l.id !== data.lobbyId));
+                        break;
+                    }
+                    case 'robotSelected': {
+                        // Mark the lobby as robot-active and stamp a friendly robot name for UI
+                        const lobbyId = data.lobbyId as string | undefined;
+                        const pvpGamePda = data.pvpGamePda as string | undefined;
+                        const gameNonce = data.gameNonce as number | undefined;
+                        setLobbies((prev) => prev.map(l => {
+                            const idMatch = lobbyId && l.id === lobbyId;
+                            const pdaMatch = pvpGamePda && l.pvpGamePda === pvpGamePda;
+                            const nonceMatch = typeof gameNonce === 'number' && l.gameNonce === gameNonce;
+                            if (!(idMatch || pdaMatch || nonceMatch)) return l;
+                            return {
+                                ...l,
+                                vsRobotActive: true,
+                                // show robot in joiner slot
+                                joinerName: 'Robot',
+                                joinerAvatar: l.joinerAvatar || null,
+                            };
+                        }));
+                        break;
+                    }
+                    case 'lobbyRemoved':
+                    case 'lobbyCancelled': {
+                        if (data?.lobbyId) {
+                            setLobbies((prev) => prev.filter(l => l.id !== data.lobbyId));
+                        }
                         break;
                     }
                     case 'stats':
@@ -207,7 +266,7 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     return (
-        <SocketContext.Provider value={{ onlineCount, lobbies, ready, sendMessage, sendRequest, getStats, putStats, getProfile, putProfile, setStartGameHandler: (h) => { startGameHandlerRef.current = h; }, setPvpMoveHandler: (h) => { pvpMoveHandlerRef.current = h; }, setStartSpectateHandler: (h) => { startSpectateHandlerRef.current = h; }, setGameOverHandler: (h) => { gameOverHandlerRef.current = h; }, setPfFinalSeedHandler: (h) => { pfFinalSeedHandlerRef.current = h; }, setWinningsClaimedHandler: (h) => { winningsClaimedHandlerRef.current = h; } }}>
+        <SocketContext.Provider value={{ onlineCount, lobbies, ready, sendMessage, sendRequest, getStats, putStats, getProfile, putProfile, removeLobby, markLobbyRobotActive, setStartGameHandler: (h) => { startGameHandlerRef.current = h; }, setPvpMoveHandler: (h) => { pvpMoveHandlerRef.current = h; }, setStartSpectateHandler: (h) => { startSpectateHandlerRef.current = h; }, setGameOverHandler: (h) => { gameOverHandlerRef.current = h; }, setPfFinalSeedHandler: (h) => { pfFinalSeedHandlerRef.current = h; }, setWinningsClaimedHandler: (h) => { winningsClaimedHandlerRef.current = h; } }}>
             {children}
         </SocketContext.Provider>
     );

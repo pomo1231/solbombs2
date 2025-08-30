@@ -38,6 +38,34 @@ pub mod solbombs {
         Ok(())
     }
 
+#[derive(Accounts)]
+pub struct CancelPvp<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"pvp", pvp_game.creator.as_ref(), &[pvp_game.game_nonce]],
+        bump = pvp_game.bump,
+        close = payer
+    )]
+    pub pvp_game: Account<'info, PvpGameState>,
+
+    #[account(
+        mut,
+        seeds = [b"treasury"],
+        bump
+    )]
+    /// CHECK: Treasury PDA for storing house funds
+    pub treasury: AccountInfo<'info>,
+
+    /// Creator to receive refund
+    #[account(mut)]
+    pub creator_account: SystemAccount<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
     // Convert an existing human lobby into a robot game, preserving the same PDA and wager.
     // Only allowed before a human has joined.
     pub fn convert_pvp_to_robot(ctx: Context<ConvertPvpToRobot>) -> Result<()> {
@@ -242,6 +270,38 @@ pub mod solbombs {
             &[
                 ctx.accounts.treasury.to_account_info(),
                 if winner_side == 0 { ctx.accounts.creator_account.to_account_info() } else { ctx.accounts.joiner_account.to_account_info() },
+                ctx.accounts.system_program.to_account_info(),
+            ],
+            &[signer_seeds],
+        )?;
+
+        game.resolved = true;
+        Ok(())
+    }
+
+    // Cancel an open PvP lobby with no human joiner: refund only the creator's original wager.
+    pub fn cancel_pvp(ctx: Context<CancelPvp>) -> Result<()> {
+        let game = &mut ctx.accounts.pvp_game;
+        require!(!game.resolved, SolbombsError::AlreadyResolved);
+        // Only allowed when no human has joined
+        require!(!game.has_joiner, SolbombsError::NoJoiner);
+
+        // Refund only the creator's original wager from treasury
+        let refund = game.wager_lamports;
+        require!(ctx.accounts.treasury.lamports() >= refund, SolbombsError::InsufficientTreasury);
+
+        let treasury_bump = ctx.bumps.treasury;
+        let signer_seeds: &[&[u8]] = &[b"treasury", &[treasury_bump]];
+        let ix = anchor_lang::solana_program::system_instruction::transfer(
+            &ctx.accounts.treasury.key(),
+            &ctx.accounts.creator_account.key(),
+            refund,
+        );
+        anchor_lang::solana_program::program::invoke_signed(
+            &ix,
+            &[
+                ctx.accounts.treasury.to_account_info(),
+                ctx.accounts.creator_account.to_account_info(),
                 ctx.accounts.system_program.to_account_info(),
             ],
             &[signer_seeds],

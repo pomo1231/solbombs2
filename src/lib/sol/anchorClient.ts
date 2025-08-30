@@ -366,6 +366,39 @@ export async function resolvePvpOnchain(params: {
   }
 }
 
+// Attempts to cancel a PvP lobby and refund the creator.
+// Strategy:
+// 1) Try resolving immediately with winnerSide=0 (creator). For joinerAccount we pass creator as a benign fallback.
+// 2) If program rejects due to NoJoiner/HumanJoinNotAllowed, try convertPvpToRobot then resolve.
+// This will trigger a wallet popup.
+export async function cancelPvpOnchain(params: {
+  wallet: any;
+  creator: PublicKey;
+  pvpGamePda: PublicKey;
+}): Promise<{ signature: string }>
+{
+  const { web3, program } = await getProgram(params.wallet);
+  const creatorPk = new web3.PublicKey(params.creator);
+  const pvpGamePk = new web3.PublicKey(params.pvpGamePda);
+
+  try {
+    const tx = await program.methods
+      .cancelPvp()
+      .accounts({
+        payer: creatorPk,
+        pvpGame: pvpGamePk,
+        treasury: (await web3.PublicKey.findProgramAddress([Buffer.from('treasury')], program.programId))[0],
+        creatorAccount: creatorPk,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .rpc();
+    return { signature: tx };
+  } catch (e: any) {
+    // Surface program errors clearly
+    throw new Error(e?.message || String(e));
+  }
+}
+
 export async function convertPvpToRobotOnchain(params: {
   wallet: any;
   payer: PublicKey;

@@ -244,6 +244,18 @@
         }
       ]
     }
+    ,
+    {
+      "name": "cancelPvp",
+      "accounts": [
+        { "name": "payer", "isMut": true, "isSigner": true },
+        { "name": "pvpGame", "isMut": true, "isSigner": false },
+        { "name": "treasury", "isMut": true, "isSigner": false },
+        { "name": "creatorAccount", "isMut": true, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": []
+    }
   ],
   "accounts": [
     {

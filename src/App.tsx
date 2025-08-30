@@ -19,6 +19,7 @@ import ProvablyFairPage from './pages/ProvablyFair';
 import TermsOfServicePage from './pages/TermsOfService';
 import SupportPage from './pages/Support';
 import BackgroundFX from './components/BackgroundFX';
+import Footer from './components/layout/Footer';
 
 export function App() {
   const { publicKey, connected } = useWallet();
@@ -37,6 +38,8 @@ export function App() {
   }, [publicKey, connected]);
 
   const Layout = ({ children }: { children: React.ReactNode }) => {
+    const location = useLocation();
+    const isOneVOne = location.pathname === '/lobby';
     return (
       <div className="min-h-screen bg-background relative flex">
         <BackgroundFX />
@@ -49,6 +52,12 @@ export function App() {
           <main className="flex-1 overflow-y-auto px-6 pt-0 pb-6 ml-80">
             {children}
           </main>
+          {/* Spacer to ensure footer is below the fold */}
+          <div
+            className={`ml-0 lg:ml-80 ${isOneVOne ? 'h-[1200px] md:h-[1600px]' : 'h-[400px] md:h-[600px]'}`}
+            aria-hidden
+          />
+          <Footer className="ml-0 lg:ml-80 mt-8" />
         </div>
         {/* Custom support button to open Crisp chat */}
         <SupportLauncher />

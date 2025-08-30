@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Bomb, Gem, RotateCcw, DollarSign, User, Bot, Trophy } from 'lucide-react';
+import { Bomb, Gem, RotateCcw, DollarSign, Trophy } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useStats } from '@/context/StatsContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
@@ -13,6 +13,8 @@ import { PublicKey } from '@solana/web3.js';
 import { resolvePvpOnchain } from '@/lib/sol/anchorClient';
 import { useSound } from '@/context/SoundContext';
 import { useSocket } from '@/context/SocketContext';
+import defaultAvatar from '@/assets/default-avatar.png';
+import robotAvatar from '@/assets/robot-nice.svg';
 
 // --- INTERFACES & TYPES ---
 interface GameSettings {
@@ -29,6 +31,11 @@ interface GameSettings {
   myRole?: 'creator' | 'joiner';
   startsBy?: 'creator' | 'joiner';
   boardSeed?: string;
+  // Profile context for immediate UI
+  creatorName?: string | null;
+  creatorAvatar?: string | null;
+  joinerName?: string | null;
+  joinerAvatar?: string | null;
 }
 
 interface MultiplayerMinesGameProps {
@@ -140,7 +147,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   const stats = useStats();
   const wallet = useWallet();
   const { play } = useSound();
-  const { sendMessage, setPvpMoveHandler, setStartSpectateHandler, setGameOverHandler, setPfFinalSeedHandler } = useSocket();
+  const { sendMessage, setPvpMoveHandler, setStartSpectateHandler, setGameOverHandler, setPfFinalSeedHandler, getProfile, ready: socketReady } = useSocket();
   // Effective settings: prefer props, otherwise restore from LS
   const [effSettings, setEffSettings] = useState<GameSettings | undefined>(() => {
     // If we have fresh settings from props, use those and don't restore
@@ -163,6 +170,77 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   const isPvp = !!(effSettings && effSettings.opponent === 'player' && !effSettings.vsRobot);
   const isSpectator = !!effSettings?.spectate;
   const appliedHydrationRef = useRef(false);
+
+  // Profiles for creator/joiner to show names/avatars in the sidebar
+  const [creatorProfile, setCreatorProfile] = useState<{ name?: string; avatarUrl?: string } | null>(null);
+  const [joinerProfile, setJoinerProfile] = useState<{ name?: string; avatarUrl?: string } | null>(null);
+
+  // Seed profiles from settings immediately (for startGame/startSpectate payloads)
+  useEffect(() => {
+    const cp = { name: effSettings?.creatorName || undefined, avatarUrl: effSettings?.creatorAvatar || undefined };
+    const jp = { name: effSettings?.joinerName || undefined, avatarUrl: effSettings?.joinerAvatar || undefined };
+    if (cp.name || cp.avatarUrl) setCreatorProfile(cp);
+    if (jp.name || jp.avatarUrl) setJoinerProfile(jp);
+  }, [effSettings?.creatorName, effSettings?.creatorAvatar, effSettings?.joinerName, effSettings?.joinerAvatar]);
+
+  // Fetch profiles when lobby context known (refresh/cache fill)
+  useEffect(() => {
+    const run = async () => {
+      try {
+        if (!socketReady) return;
+        const c = effSettings?.creator || undefined;
+        const j = effSettings?.joiner || undefined;
+        if (c) {
+          try {
+            const p = await getProfile(c);
+            if (p) setCreatorProfile({ name: p.name, avatarUrl: p.avatarUrl });
+          } catch {}
+        }
+        if (j) {
+          try {
+            const p = await getProfile(j);
+            if (p) setJoinerProfile({ name: p.name, avatarUrl: p.avatarUrl });
+          } catch {}
+        }
+      } catch {}
+    };
+    run();
+  }, [socketReady, effSettings?.creator, effSettings?.joiner, getProfile]);
+
+  const myWallet = wallet.publicKey?.toBase58?.();
+  const myProfile = stats.userProfile;
+  const short = (w?: string | null) => w ? `User...${w.slice(-4)}` : 'Unknown';
+  const displayName = (p?: { name?: string } | null, w?: string | null) => (p?.name && p.name.trim()) || short(w);
+  const displayAvatar = (p?: { avatarUrl?: string } | null) => (p?.avatarUrl && p.avatarUrl.trim()) || defaultAvatar;
+
+  // Resolve opponent info for the sidebar (names + avatars)
+  const iAmCreator = effSettings?.myRole === 'creator';
+  const opponentWallet = isPvp
+    ? (iAmCreator ? effSettings?.joiner || null : effSettings?.creator || null)
+    : null;
+  const opponentProfile = isPvp
+    ? (iAmCreator ? joinerProfile : creatorProfile)
+    : null;
+  const opponentName = isPvp
+    ? displayName(opponentProfile as any, opponentWallet || undefined)
+    : 'Robot';
+  const opponentAvatar = isPvp
+    ? displayAvatar(opponentProfile as any)
+    : robotAvatar;
+  const meName = myProfile?.name || short(myWallet);
+  const meAvatar = myProfile?.avatarUrl || defaultAvatar;
+
+  // Sidebar labels/avatars: spectators should see Creator vs Joiner
+  const leftName = isSpectator ? displayName(creatorProfile as any, effSettings?.creator) : 'You';
+  const leftAvatar = isSpectator ? displayAvatar(creatorProfile as any) : meAvatar;
+  const rightName = isSpectator
+    ? (isPvp ? displayName(joinerProfile as any, effSettings?.joiner || undefined) : 'Robot')
+    : (isPvp ? opponentName : 'Robot');
+  const rightAvatar = isSpectator
+    ? (isPvp ? (effSettings?.joiner ? displayAvatar(joinerProfile as any) : defaultAvatar) : robotAvatar)
+    : opponentAvatar;
+
+  const activeTurnName = state.activeTurn === 'player' ? leftName : rightName;
   
   const handleClaimWinnings = async () => {
     // Placeholder: Wire to on-chain claim when PvP context is available in props
@@ -235,7 +313,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   // Notify server when the PvP match concludes so lobbies update live
   useEffect(() => {
     try {
-      if (isPvp && effSettings?.lobbyId && state.gameOver && !sentGameOverRef.current) {
+      if (!isSpectator && isPvp && effSettings?.lobbyId && state.gameOver && !sentGameOverRef.current) {
         sentGameOverRef.current = true;
         // Map local winner to server role perspective
         let winnerSide: 'creator' | 'joiner' | undefined;
@@ -246,31 +324,31 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
         sendMessage({ type: 'gameOver', lobbyId: effSettings.lobbyId, winner: winnerSide });
       }
     } catch {}
-  }, [isPvp, effSettings?.lobbyId, state.gameOver, sendMessage]);
+  }, [isSpectator, isPvp, effSettings?.lobbyId, state.gameOver, sendMessage]);
 
   // Maintain claim-required flag in localStorage for global nav guard
   useEffect(() => {
     try {
-      if (isPvp && state.gameOver && state.winner === 'player' && !claimed) {
+      if (!isSpectator && isPvp && state.gameOver && state.winner === 'player' && !claimed) {
         const lobbyId = effSettings?.lobbyId || 'unknown';
         localStorage.setItem('pvp_claim_required', JSON.stringify({ lobbyId, ts: Date.now() }));
       } else {
         localStorage.removeItem('pvp_claim_required');
       }
     } catch {}
-  }, [isPvp, state.gameOver, state.winner, claimed, effSettings?.lobbyId]);
+  }, [isSpectator, isPvp, state.gameOver, state.winner, claimed, effSettings?.lobbyId]);
 
   // Prevent accidental tab close/refresh while claim required
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (isPvp && state.gameOver && state.winner === 'player' && !claimed) {
+      if (!isSpectator && isPvp && state.gameOver && state.winner === 'player' && !claimed) {
         e.preventDefault();
         e.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [isPvp, state.gameOver, state.winner, claimed]);
+  }, [isSpectator, isPvp, state.gameOver, state.winner, claimed]);
 
   useEffect(() => {
     // Prevent re-initialization mid-game if state has already progressed
@@ -456,12 +534,12 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
       return;
     }
 
-    // If it's the bot/opponent turn, make a move for bot games only.
-    if (!isPvp && state.activeTurn === 'opponent') {
+    // If it's the bot/opponent turn, make a move for bot games only (players only; spectators must not run AI).
+    if (!isPvp && !isSpectator && state.activeTurn === 'opponent') {
       const timeoutId = setTimeout(() => makeBotMove(), 1000);
       return () => clearTimeout(timeoutId);
     }
-  }, [state.activeTurn, state.playerHasHitBomb, state.opponentHasHitBomb, state.gameOver, isPvp]);
+  }, [state.activeTurn, state.playerHasHitBomb, state.opponentHasHitBomb, state.gameOver, isPvp, isSpectator]);
 
 
   const processMove = (tileId: number, moveMaker: 'player' | 'opponent', force: boolean = false): void => {
@@ -492,10 +570,10 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
         try { play('bomb'); } catch {}
         if (moveMaker === 'player') {
           newState.playerHasHitBomb = true;
-          toast({ title: "💥 You hit a bomb!", description: "You can't make any more moves.", variant: "destructive" });
+          if (!isSpectator) toast({ title: "💥 You hit a bomb!", description: "You can't make any more moves.", variant: "destructive" });
         } else {
           newState.opponentHasHitBomb = true;
-          toast({ title: isPvp ? 'Opponent hit a bomb!' : 'Bot hit a bomb!', description: "It can't make any more moves." });
+          if (!isSpectator) toast({ title: isPvp ? 'Opponent hit a bomb!' : 'Bot hit a bomb!', description: "It can't make any more moves." });
         }
       } else {
         try { play('diamond'); } catch {}
@@ -516,7 +594,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
             winner = 'opponent';
           } else {
               const coinFlipWinner = seedrandom(newState.gameSeed + 'tie')() < 0.5 ? 'player' : 'opponent';
-              setCoinflip({ show: true, winner: coinFlipWinner });
+              if (!isSpectator) setCoinflip({ show: true, winner: coinFlipWinner });
           }
       } else if (newState.playerHasHitBomb && newState.opponentScore > newState.playerScore) {
         gameOver = true;
@@ -533,7 +611,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
         } else {
           // Coinflip for a tie
           const coinFlipWinner = seedrandom(newState.gameSeed + 'tie')() < 0.5 ? 'player' : 'opponent';
-          setCoinflip({ show: true, winner: coinFlipWinner });
+          if (!isSpectator) setCoinflip({ show: true, winner: coinFlipWinner });
           // Winner will be set after animation
           winner = null; 
         }
@@ -545,7 +623,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
           newState.winner = winner;
           // Reveal all tiles
           newState.tiles.forEach((t: any) => t.isRevealed = true);
-          toast({ title: "Game Over!", description: `Final Score: You ${newState.playerScore} - ${newState.opponentScore} ${isPvp ? 'Opponent' : 'Bot'}. ${winner === 'player' ? 'You win!' : 'You lose.'}` });
+          if (!isSpectator) toast({ title: "Game Over!", description: `Final Score: You ${newState.playerScore} - ${newState.opponentScore} ${isPvp ? 'Opponent' : 'Bot'}. ${winner === 'player' ? 'You win!' : 'You lose.'}` });
           stats?.addGame({
             wageredAmount: newState.betAmount,
             netProfit: winner === 'player' ? newState.betAmount : -newState.betAmount,
@@ -570,8 +648,17 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
     processMove(tileId, 'player');
     // Relay PvP move to server for other client/spectators
     try {
-      if (!isSpectator && isPvp && effSettings?.lobbyId) {
-        sendMessage({ type: 'pvpMove', lobbyId: effSettings.lobbyId, tileId });
+      if (!isSpectator && effSettings?.lobbyId && (isPvp || effSettings?.vsRobot)) {
+        // Determine who 'by' is from server perspective
+        let by: 'creator' | 'joiner' | undefined = undefined;
+        if (isPvp) {
+          if (effSettings?.myRole === 'creator') by = 'creator';
+          else if (effSettings?.myRole === 'joiner') by = 'joiner';
+        } else {
+          // Robot games: human is creator, bot is joiner
+          by = 'creator';
+        }
+        sendMessage({ type: 'pvpMove', lobbyId: effSettings.lobbyId, tileId, by });
       }
     } catch {}
   };
@@ -581,6 +668,12 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
     if (unrevealedTiles.length === 0) return;
     const randomTile = unrevealedTiles[Math.floor(Math.random() * unrevealedTiles.length)];
     processMove(randomTile.id, 'opponent');
+    // Broadcast bot move for spectators in robot games
+    try {
+      if (!isPvp && effSettings?.vsRobot && effSettings?.lobbyId) {
+        sendMessage({ type: 'pvpMove', lobbyId: effSettings.lobbyId, tileId: randomTile.id, by: 'joiner' });
+      }
+    } catch {}
   };
   
   const handleCoinflipComplete = (winner: 'player' | 'opponent') => {
@@ -600,7 +693,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
 
   const handleBack = () => {
     // If winner in PvP, force claim before leaving
-    if (isPvp && state.gameOver && state.winner === 'player' && !claimed) {
+    if (!isSpectator && isPvp && state.gameOver && state.winner === 'player' && !claimed) {
       toast({ title: 'Claim required', description: 'Please claim your winnings before returning to the lobby.', variant: 'destructive' });
       return;
     }
@@ -692,7 +785,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <Button variant="outline" onClick={handleBack} disabled={isPvp && state.gameOver && state.winner === 'player' && !claimed}>← Back</Button>
+          <Button variant="outline" onClick={handleBack} disabled={!isSpectator && isPvp && state.gameOver && state.winner === 'player' && !claimed}>← Back to Lobby</Button>
           <h1 className="text-2xl font-bold">1v1 Mines</h1>
           <Badge variant="outline"><Bomb className="w-3 h-3 mr-1" />{state.bombCount} Bombs</Badge>
           <Badge variant="outline"><DollarSign className="w-3 h-3 mr-1" />{(state.betAmount * 2).toFixed(2)} SOL Pot</Badge>
@@ -733,13 +826,29 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
           <div className="space-y-4">
             <div className="bg-gradient-card border border-primary/20 rounded-xl p-6">
               <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><User /><span>You</span></div><Badge variant={state.playerHasHitBomb ? "destructive" : "secondary"}>{state.playerScore} Tiles</Badge></div>
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Bot /><span>{isPvp ? 'Opponent' : 'Bot'}</span></div><Badge variant={state.opponentHasHitBomb ? "destructive" : "secondary"}>{state.opponentScore} Tiles</Badge></div>
+                {/* Left player (You or Creator when spectating) */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img src={leftAvatar} alt={leftName} className="w-8 h-8 rounded-full border border-white/10 object-cover" />
+                    <span className="truncate max-w-[140px] font-medium">{leftName}</span>
+                  </div>
+                  <Badge variant={state.playerHasHitBomb ? 'destructive' : 'secondary'}>{state.playerScore} Tiles</Badge>
+                </div>
+                {/* Right player (Opponent or Joiner/Robot when spectating) */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img src={rightAvatar} alt={rightName} className="w-8 h-8 rounded-full border border-white/10 object-cover" />
+                    <span className="truncate max-w-[140px] font-medium">{rightName}</span>
+                  </div>
+                  <Badge variant={state.opponentHasHitBomb ? 'destructive' : 'secondary'}>{state.opponentScore} Tiles</Badge>
+                </div>
                 <div className="text-center pt-2">
-                    <Badge variant="outline" className={state.gameOver ? '' : 'animate-pulse'}>
-                        <Trophy className="w-4 h-4 mr-1" />
-                        {state.gameOver ? (state.winner === 'player' ? 'You Won!' : state.winner === 'opponent' ? (isPvp ? 'Opponent Won' : 'Bot Won') : 'Tie Game') : (state.activeTurn === 'player' ? "Your Turn" : (isPvp ? "Opponent's Turn" : "Bot's Turn"))}
-                    </Badge>
+                  <Badge variant="outline" className={state.gameOver ? '' : 'animate-pulse'}>
+                    <Trophy className="w-4 h-4 mr-1" />
+                        {state.gameOver
+                          ? (state.winner === 'player' ? `${leftName} Won` : state.winner === 'opponent' ? `${rightName} Won` : 'Tie Game')
+                          : `${activeTurnName}'s Turn`}
+                  </Badge>
                 </div>
               </div>
             </div>

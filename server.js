@@ -172,6 +172,65 @@ wss.on('connection', function connection(ws) {
         break;
       }
 
+      case 'robotSelected': {
+        // Creator selected to play vs Robot. Mark lobby as started and robot-active.
+        const { lobbyId, pvpGamePda, gameNonce } = message;
+        let lobby = null;
+        if (lobbyId) lobby = lobbies.find(l => l.id === lobbyId);
+        if (!lobby && pvpGamePda) lobby = lobbies.find(l => l.pvpGamePda && l.pvpGamePda === pvpGamePda);
+        if (!lobby && (typeof gameNonce === 'number')) lobby = lobbies.find(l => l.gameNonce === gameNonce);
+        if (!lobby) break;
+        // Only the creator can flip to robot mode
+        if (lobby.createdBy !== clientId) break;
+        lobby.vsRobotActive = true;
+        lobby.players = 2;
+        lobby.joinedBy = null; // no human joiner
+        lobby.joinerWallet = null;
+        lobby.joinerName = 'Robot';
+        lobby.joinerAvatar = null;
+        lobby.status = 'started';
+        // Initialize provably fair context for consistency (server commit). Robot doesn't need a secret but we keep flow.
+        const startsBy = Math.random() < 0.5 ? 'creator' : 'joiner';
+        lobby.startsBy = startsBy;
+        const serverSecret = randomUUID();
+        const commitHash = createHash('sha256').update(serverSecret).digest('hex');
+        lobby.pf = { serverSecret, commitHash, creatorSeed: null, joinerSeed: null, finalSeed: null };
+        // For robot games, compute a shared boardSeed immediately (no client seeds) and persist
+        const boardSeed = createHash('sha256')
+          .update(`${serverSecret}|${lobby.id}|${lobby.gameNonce ?? ''}`)
+          .digest('hex');
+        lobby.boardSeed = boardSeed;
+        lobby.pf.finalSeed = boardSeed;
+        // Notify all clients so the lobby card shows Robot and disables Join
+        broadcast({ type: 'robotSelected', lobbyId: lobby.id, pvpGamePda: lobby.pvpGamePda, gameNonce: lobby.gameNonce });
+        broadcast({ type: 'lobbies', lobbies: lobbies.filter(l => l.status !== 'finished') });
+        // Also inform the creator (and any existing spectators) of the final seed so clients use identical layouts
+        for (const client of wss.clients) {
+          const cid = clients.get(client);
+          const isCreator = cid === lobby.createdBy;
+          const isSpectator = Array.isArray(lobby.spectators) && lobby.spectators.includes(cid);
+          if ((isCreator || isSpectator) && client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+              type: 'pfFinalSeed',
+              lobbyId: lobby.id,
+              betAmount: lobby.betAmount,
+              bombCount: lobby.bombCount,
+              startsBy,
+              yourRole: isCreator ? 'creator' : undefined,
+              boardSeed,
+              pvpGamePda: lobby.pvpGamePda,
+              creatorWallet: lobby.creatorWallet,
+              joinerWallet: lobby.joinerWallet,
+              creatorName: lobby.creatorName || null,
+              creatorAvatar: lobby.creatorAvatar || null,
+              joinerName: lobby.joinerName || null,
+              joinerAvatar: lobby.joinerAvatar || null,
+            }));
+          }
+        }
+        break;
+      }
+
       case 'pfClientSeed': {
         const { lobbyId, seed, role } = message;
         const lobby = lobbies.find(l => l.id === lobbyId);
@@ -209,6 +268,11 @@ wss.on('connection', function connection(ws) {
                 pvpGamePda: lobby.pvpGamePda,
                 creatorWallet: lobby.creatorWallet,
                 joinerWallet: lobby.joinerWallet,
+                // include profile context for immediate UI without extra fetches
+                creatorName: lobby.creatorName || null,
+                creatorAvatar: lobby.creatorAvatar || null,
+                joinerName: lobby.joinerName || null,
+                joinerAvatar: lobby.joinerAvatar || null,
               }));
             }
           }
@@ -239,6 +303,9 @@ wss.on('connection', function connection(ws) {
           creatorAvatar: typeof message.creatorAvatar === 'string' ? message.creatorAvatar : null,
           joinerName: null,
           joinerAvatar: null,
+          // robot flags
+          allowRobot: !!message.allowRobot,
+          vsRobotActive: false,
         };
         lobbies.push(newLobby);
         broadcast({ type: 'lobbies', lobbies: lobbies.filter(l => l.status !== 'finished') });
@@ -250,6 +317,10 @@ wss.on('connection', function connection(ws) {
         const lobby = lobbies.find(l => l.id === lobbyId);
         if (!lobby) {
           ws.send(JSON.stringify({ type: 'error', code: 'LOBBY_NOT_FOUND', reqId: message.reqId }));
+          break;
+        }
+        if (lobby.vsRobotActive) {
+          ws.send(JSON.stringify({ type: 'error', code: 'ROBOT_ACTIVE', reqId: message.reqId }));
           break;
         }
         if (lobby.status !== 'open' || lobby.players >= lobby.maxPlayers) {
@@ -299,6 +370,11 @@ wss.on('connection', function connection(ws) {
               pvpGamePda: lobby.pvpGamePda,
               creatorWallet: lobby.creatorWallet,
               joinerWallet: lobby.joinerWallet,
+              // include profile context so clients can render avatar/name
+              creatorName: lobby.creatorName || null,
+              creatorAvatar: lobby.creatorAvatar || null,
+              joinerName: lobby.joinerName || null,
+              joinerAvatar: lobby.joinerAvatar || null,
             };
             client.send(JSON.stringify(payload));
           }
@@ -312,9 +388,14 @@ wss.on('connection', function connection(ws) {
         if (!lobby || lobby.status !== 'started') break;
         // Determine side and record
         const senderId = clients.get(ws);
-        const by = (senderId === lobby.createdBy) ? 'creator' : 'joiner';
+        let by = (senderId === lobby.createdBy) ? 'creator' : 'joiner';
+        // For robot games, allow explicit 'by' override so the creator client can emit bot moves as joiner
+        if (lobby.vsRobotActive && (message.by === 'creator' || message.by === 'joiner')) {
+          by = message.by;
+        }
         lobby.moveHistory = lobby.moveHistory || [];
         lobby.moveHistory.push({ tileId, by });
+        try { console.log(`[pvpMove] lobby=${lobby.id} tile=${tileId} by=${by} spectators=${Array.isArray(lobby.spectators) ? lobby.spectators.length : 0}`); } catch {}
         // Forward to the other participant
         const targetClientId = (senderId === lobby.createdBy) ? lobby.joinedBy : lobby.createdBy;
         if (targetClientId) {
@@ -332,25 +413,43 @@ wss.on('connection', function connection(ws) {
               client.send(JSON.stringify({ type: 'pvpMove', lobbyId, tileId, by }));
             }
           }
+          try { console.log(`[pvpMove] broadcasted to spectators for lobby=${lobby.id}`); } catch {}
         }
         break;
       }
 
       case 'spectateLobby': {
-        const { lobbyId } = message;
-        const lobby = lobbies.find(l => l.id === lobbyId);
+        const { lobbyId, pvpGamePda, gameNonce } = message;
+        let lobby = null;
+        if (lobbyId) lobby = lobbies.find(l => l.id === lobbyId);
+        if (!lobby && pvpGamePda) lobby = lobbies.find(l => l.pvpGamePda && l.pvpGamePda === pvpGamePda);
+        if (!lobby && (typeof gameNonce === 'number')) lobby = lobbies.find(l => l.gameNonce === gameNonce);
         if (!lobby || lobby.status !== 'started') break;
-        const cid = clients.get(ws);
-        lobby.spectators = lobby.spectators || [];
-        if (!lobby.spectators.includes(cid)) lobby.spectators.push(cid);
+        try { console.log(`[spectateLobby] request for lobby=${lobby.id} (pda=${lobby.pvpGamePda || 'n/a'} nonce=${lobby.gameNonce ?? 'n/a'})`); } catch {}
+        lobby.spectators = Array.isArray(lobby.spectators) ? lobby.spectators : [];
+        const watcherId = clients.get(ws);
+        if (watcherId && !lobby.spectators.includes(watcherId)) {
+          lobby.spectators.push(watcherId);
+          try { console.log(`[spectateLobby] added spectator session=${watcherId} totalSpectators=${lobby.spectators.length}`); } catch {}
+        }
+        // Send current state & moves
         const payload = {
           type: 'startSpectate',
           lobbyId: lobby.id,
           betAmount: lobby.betAmount,
           bombCount: lobby.bombCount,
-          boardSeed: lobby.boardSeed || (lobby.pf && lobby.pf.finalSeed) || undefined,
-          moves: Array.isArray(lobby.moveHistory) ? lobby.moveHistory : [],
+          boardSeed: lobby.boardSeed,
+          moves: lobby.moveHistory || [],
+          creatorWallet: lobby.createdByWallet || null,
+          joinerWallet: lobby.joinedByWallet || null,
+          creatorName: lobby.creatorName || null,
+          creatorAvatar: lobby.creatorAvatar || null,
+          joinerName: lobby.joinerName || null,
+          joinerAvatar: lobby.joinerAvatar || null,
+          vsRobotActive: !!lobby.vsRobotActive,
+          startsBy: lobby.startsBy,
         };
+        try { console.log(`[spectateLobby] sending startSpectate to session=${watcherId} movesLen=${(lobby.moveHistory || []).length}`); } catch {}
         if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
         break;
       }
@@ -568,6 +667,13 @@ wss.on('connection', function connection(ws) {
                   betAmount: lobby.betAmount,
                   bombCount: lobby.bombCount,
                   moves: Array.isArray(lobby.moveHistory) ? lobby.moveHistory : [],
+                  // also include identities here for the duplicate handler
+                  creatorWallet: lobby.creatorWallet,
+                  joinerWallet: lobby.joinerWallet,
+                  creatorName: lobby.creatorName || null,
+                  creatorAvatar: lobby.creatorAvatar || null,
+                  joinerName: lobby.joinerName || null,
+                  joinerAvatar: lobby.joinerAvatar || null,
                 };
                 if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
                 break;
