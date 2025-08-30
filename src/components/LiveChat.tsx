@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, FC, FormEvent, MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import casinoLogo from '@/assets/casino-logo.gif';
-import { Smile, Info, MessageCircle, PauseCircle, Gift, Users as UsersIcon, CornerDownLeft, X } from 'lucide-react';
+import { Smile, Info, MessageCircle, PauseCircle, Gift, Users as UsersIcon, CornerDownLeft, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { generateAvatarUrl } from '@/lib/utils';
 import { useStats } from '@/context/StatsContext';
 import { Badge } from '@/components/ui/badge';
@@ -309,95 +309,107 @@ const LiveChat: FC<LiveChatProps> = ({ wallet, isConnected }) => {
     <button
       aria-label={collapsed ? 'Open chat' : 'Collapse chat'}
       onClick={() => setCollapsed((c) => !c)}
-      className="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#222327] hover:bg-[#2a2b30] border border-white/10 shadow-md flex items-center justify-center text-gray-300 hover:text-white"
+      className="absolute -right-4 top-24 w-9 h-9 rounded-xl bg-[#222327]/90 hover:bg-[#2a2b30] border border-white/10 shadow-lg backdrop-blur-sm flex items-center justify-center text-gray-200 hover:text-white"
       title={collapsed ? 'Open chat' : 'Hide chat'}
     >
-      <span className="text-sm leading-none select-none">{collapsed ? '>' : '<'}</span>
+      {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
     </button>
   );
 
   return (
-    <aside className={`fixed top-0 left-0 h-screen w-80 bg-[#18191c] border-r border-white/10 z-50 flex flex-col transform transition-transform duration-300 ease-in-out ${collapsed ? '-translate-x-[calc(100%-16px)]' : 'translate-x-0'}`}>
-      {toggleBtn}
-      <button
-        onClick={() => navigate('/')}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        style={backgroundStyle}
-        className="h-24 flex flex-row items-center justify-center gap-2 relative overflow-hidden border-b border-white/10"
-      >
-        <img src={casinoLogo} alt="Casino Logo" className="w-24 h-24 drop-shadow-[0_0_10px_rgba(99,102,241,0.7)]" />
-        <h1 className="font-extrabold text-2xl text-white tracking-wide">SolBombs</h1>
-      </button>
+    <>
+      {/* Fixed logo/banner section */}
+      <aside className="fixed top-0 left-0 h-24 w-80 bg-[#18191c] border-r border-white/10 z-50">
+        <button
+          onClick={() => navigate('/')}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          style={backgroundStyle}
+          className="h-24 w-full flex flex-row items-center justify-center gap-2 relative overflow-hidden"
+        >
+          <img src={casinoLogo} alt="Casino Logo" className="w-24 h-24 drop-shadow-[0_0_10px_rgba(99,102,241,0.7)]" />
+          <h1 className="font-extrabold text-2xl text-white tracking-wide">SolBombs</h1>
+        </button>
+      </aside>
 
-      <div className="flex-1 overflow-y-auto pt-2 no-scrollbar bg-[#18191c]">
-        {isChatPaused && (
-          <ChatNotice text="Chat is paused by the streamer" icon={PauseCircle} />
-        )}
-        {!isChatPaused && messages.map((m, i) => renderMessage(m, i))}
-        <div ref={messagesEndRef} />
-      </div>
+      {/* Dedicated separator line */}
+      <div className="fixed top-[95px] left-0 w-80 h-px bg-white/10 z-[60]" />
 
-      <div className="p-4 bg-[#1e1f22] border-t border-white/10">
-        {replyTo && (
-          <div className="mb-2 px-3 py-2 bg-[#23242a] border border-white/10 rounded flex items-start justify-between">
-            <div className="text-xs text-gray-300">
-              Replying to <span className="font-semibold">{replyTo.name}</span>
-              <div className="text-gray-400 italic">{replyTo.snippet}</div>
-            </div>
-            <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-gray-200">
-              <X className="w-4 h-4" />
-            </button>
+      {/* Collapsible chat section */}
+      <aside className={`fixed top-[96px] ${collapsed ? 'left-[-48px] w-12' : 'left-0 w-80'} h-[calc(100vh-6rem)] bg-[#18191c] border-r border-white/10 z-40 flex flex-col transition-[width,left] duration-300 ease-in-out`}>
+        {toggleBtn}
+        {/* Chat content - hidden when collapsed */}
+        <div className={`flex-1 overflow-hidden ${collapsed ? 'hidden' : 'flex flex-col'}`}>
+          <div className="flex-1 overflow-y-auto pt-2 no-scrollbar bg-[#18191c]">
+            {isChatPaused && (
+              <ChatNotice text="Chat is paused by the streamer" icon={PauseCircle} />
+            )}
+            {!isChatPaused && messages.map((m, i) => renderMessage(m, i))}
+            <div ref={messagesEndRef} />
           </div>
-        )}
-        <form onSubmit={sendMessage} className="relative">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={isConnected ? 'Type a message...' : 'Connect wallet to chat'}
-            className="w-full bg-[#23242a] border border-[#35364a] focus:border-indigo-500 rounded-lg pl-4 pr-20 py-2 text-white placeholder-gray-400 transition-colors disabled:opacity-50"
-            disabled={!isConnected || isChatPaused}
-          />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            <button type="button" onClick={() => setShowEmoji((s) => !s)} className="p-1 text-gray-300 hover:text-white" title="Emoji">
-              <Smile className="w-4 h-4" />
-            </button>
-            <button
-              type="submit"
-              disabled={!isConnected || !input.trim() || !wsReady}
-              className="px-2 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded text-white"
-            >
-              Send
-            </button>
-          </div>
-          {showEmoji && (
-            <div className="absolute bottom-10 right-2 bg-[#23242a] border border-white/10 rounded shadow-lg p-2 grid grid-cols-6 gap-1 z-10">
-              {['😀','😁','😂','🤣','😊','😍','😎','😏','😢','😭','😡','👍','👎','🙏','👏','🔥','💯','🎉','🎲','🪙','🚀','💎','⭐','⚡','💥','🧨','🤑','🤝','🤞','🙂','😉','😅','🤔','😴','😇'].map((emo) => (
-                <button
-                  key={emo}
-                  type="button"
-                  className="hover:bg-white/10 rounded"
-                  onClick={() => { setInput((v) => v + emo); setShowEmoji(false); }}
-                >
-                  {emo}
-                </button>
-              ))}
+
+          <div className="p-4 bg-[#1e1f22] border-t border-white/10">
+          {replyTo && (
+            <div className="mb-2 px-3 py-2 bg-[#23242a] border border-white/10 rounded flex items-start justify-between">
+              <div className="text-xs text-gray-300">
+                Replying to <span className="font-semibold">{replyTo.name}</span>
+                <div className="text-gray-400 italic">{replyTo.snippet}</div>
+              </div>
+              <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-gray-200">
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
-        </form>
-        <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
-          <button className="flex items-center gap-1 hover:text-gray-200" onClick={() => alert('Be respectful. No spam, hate speech, or scams. Keep it legal. Mods may time-out offenders.') }>
-            <Info className="w-4 h-4" />
-            Chat Rules
-          </button>
-          <div className="flex items-center gap-1">
-            <UsersIcon className="w-4 h-4" />
-            <span>{onlineCount}</span>
+          <form onSubmit={sendMessage} className="relative">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={isConnected ? 'Type a message...' : 'Connect wallet to chat'}
+              className="w-full bg-[#23242a] border border-[#35364a] focus:border-indigo-500 rounded-lg pl-4 pr-20 py-2 text-white placeholder-gray-400 transition-colors disabled:opacity-50"
+              disabled={!isConnected || isChatPaused}
+            />
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <button type="button" onClick={() => setShowEmoji((s) => !s)} className="p-1 text-gray-300 hover:text-white" title="Emoji">
+                <Smile className="w-4 h-4" />
+              </button>
+              <button
+                type="submit"
+                disabled={!isConnected || !input.trim() || !wsReady}
+                className="px-2 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded text-white"
+              >
+                Send
+              </button>
+            </div>
+            {showEmoji && (
+              <div className="absolute bottom-10 right-2 bg-[#23242a] border border-white/10 rounded shadow-lg p-2 grid grid-cols-6 gap-1 z-10">
+                {['😀','😁','😂','🤣','😊','😍','😎','😏','😢','😭','😡','👍','👎','🙏','👏','🔥','💯','🎉','🎲','🪙','🚀','💎','⭐','⚡','💥','🧨','🤑','🤝','🤞','🙂','😉','😅','🤔','😴','😇'].map((emo) => (
+                  <button
+                    key={emo}
+                    type="button"
+                    className="hover:bg-white/10 rounded"
+                    onClick={() => { setInput((v) => v + emo); setShowEmoji(false); }}
+                  >
+                    {emo}
+                  </button>
+                ))}
+              </div>
+            )}
+          </form>
+          <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
+            <button className="flex items-center gap-1 hover:text-gray-200" onClick={() => alert('Be respectful. No spam, hate speech, or scams. Keep it legal. Mods may time-out offenders.') }>
+              <Info className="w-4 h-4" />
+              Chat Rules
+            </button>
+            <div className="flex items-center gap-1">
+              <UsersIcon className="w-4 h-4" />
+              <span>{onlineCount}</span>
+            </div>
           </div>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 };
 

@@ -5,12 +5,13 @@ import Index from "./pages/index";
 import NotFound from "./pages/NotFound";
 import ProfilePage from "./pages/Profile";
 import LiveChat from './components/LiveChat';
-import CrispChatSetup from './components/CrispChatSetup';
 import { GameHistoryPage } from './pages/GameHistory';
 import { LeaderboardPage } from './pages/Leaderboard';
 import { MultiplayerLobbyPage } from './pages/MultiplayerLobbyPage';
 import { GameNav } from './components/layout/GameNav';
 import TopHeader from './components/layout/TopHeader';
+import SupportLauncher from './components/SupportLauncher';
+import CrispChatSetup from './components/CrispChatSetup';
 import OptionsPage from './pages/Options';
 import StatisticsPage from './pages/Statistics';
 import TransactionsPage from './pages/Transactions';
@@ -39,21 +40,24 @@ export function App() {
     return (
       <div className="min-h-screen bg-background relative flex">
         <BackgroundFX />
+        {/* Restore Crisp initialization */}
+        <CrispChatSetup enabled={true} />
         <LiveChat wallet={wallet} isConnected={isConnected} />
-        <div className="flex-1 flex flex-col" style={{ marginLeft: 320 }}>
+        <div className="flex-1 flex flex-col">
           <TopHeader />
           <GameNav />
-          <main className="flex-1 overflow-y-auto px-6 py-6">
+          <main className="flex-1 overflow-y-auto px-6 pt-0 pb-6 ml-80">
             {children}
           </main>
         </div>
+        {/* Custom support button to open Crisp chat */}
+        <SupportLauncher />
       </div>
     );
   };
 
   return (
     <BrowserRouter>
-      <CrispChatSetup enabled={isConnected} />
       <Routes>
         <Route
           path="/"

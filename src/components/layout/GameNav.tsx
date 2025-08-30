@@ -46,7 +46,7 @@ export const GameNav = () => {
   };
 
   return (
-    <div className="flex items-center justify-between h-16 px-6 bg-[#18191c] border-b border-white/10">
+    <nav className="sticky top-8 h-16 bg-[#18191c] border-b border-white/10 z-10 flex items-center justify-between px-6 ml-80">
       {/* Left side */}
       <div className="flex items-center gap-2">
         <Button
@@ -104,6 +104,6 @@ export const GameNav = () => {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-    </div>
+    </nav>
   );
 }; 

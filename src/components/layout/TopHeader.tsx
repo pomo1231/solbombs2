@@ -8,13 +8,12 @@ const TopHeader = () => {
 
   const openCrispChat = () => {
     if ((window as any).$crisp) {
-      (window as any).$crisp.push(['do', 'chat:show']);
       (window as any).$crisp.push(['do', 'chat:open']);
     }
   };
 
   return (
-    <div className="h-8 bg-[#18191c] w-full flex items-center justify-between px-4 border-b border-white/10">
+    <header className="sticky top-0 h-8 bg-[#18191c] border-b border-white/10 z-10 flex items-center justify-between px-6 ml-80">
       <div className="flex items-center space-x-6 text-xs font-medium">
         <button
           onClick={() => navigate('/provably-fair')}
@@ -39,7 +38,7 @@ const TopHeader = () => {
         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2" />
         {onlineCount} Online
       </Badge>
-    </div>
+    </header>
   );
 };
 
