@@ -1,844 +1,995 @@
 {
-  "GNTE6wLZuqT7LLXhn33LUNNNNFqL6FFcq8LxYgMKcobu": {
-    "totalWagered": 2.669999999999998,
-    "gameHistory": [
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "e9fb52a457f784b69e35a9bff5357dae3b38136bfa750e1670eebd504dda1274",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756516674937",
-        "timestamp": "2025-08-30T01:17:54.937Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "4b89de01-ac8b-495d-8cc3-c8c0bf793b40:1756515792985",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756515861028",
-        "timestamp": "2025-08-30T01:04:21.028Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "f725d3b5-0999-4071-be47-07b9ef6996d0:1756514769041",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756514777225",
-        "timestamp": "2025-08-30T00:46:17.225Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "a4afc562-a2a7-4e93-a348-c4d8cf77074e:1756514428468",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756514458214",
-        "timestamp": "2025-08-30T00:40:58.214Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "7dfd4d06-1fe5-4946-a751-db96170ed63e:1756514173534",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756514195000",
-        "timestamp": "2025-08-30T00:36:35.000Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "0f74beab-b67a-411d-a2ac-caaa7c6af7c7:1756514099215",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756514111674",
-        "timestamp": "2025-08-30T00:35:11.674Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "c56cd6f9-f752-499a-bbad-f9de40ad4363:1756513802942",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756513826699",
-        "timestamp": "2025-08-30T00:30:26.699Z"
-      },
-      {
-        "netProfit": -0.1,
-        "wageredAmount": 0.1,
-        "multiplier": 0,
-        "gameMode": "solo",
-        "serverSeed": "8a7c1a4aaa7481ca26685eab81eb2d2c",
-        "clientSeed": "etzuj9x9daq",
-        "nonce": 161,
-        "id": "game_1756513000798",
-        "timestamp": "2025-08-30T00:16:40.798Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756509653566",
-        "timestamp": "2025-08-29T23:20:53.566Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756509589020",
-        "timestamp": "2025-08-29T23:19:49.020Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756508944692",
-        "timestamp": "2025-08-29T23:09:04.692Z"
-      },
-      {
-        "wageredAmount": 0.1,
-        "netProfit": -0.1,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756508234532",
-        "timestamp": "2025-08-29T22:57:14.532Z"
-      },
-      {
-        "wageredAmount": 0.1,
-        "netProfit": 0.1,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756508032937",
-        "timestamp": "2025-08-29T22:53:52.937Z"
-      },
-      {
-        "wageredAmount": 0.1,
-        "netProfit": -0.1,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756507604482",
-        "timestamp": "2025-08-29T22:46:44.482Z"
-      },
-      {
-        "wageredAmount": 0.3,
-        "netProfit": 0.3,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756507100489",
-        "timestamp": "2025-08-29T22:38:20.489Z"
-      },
-      {
-        "wageredAmount": 0.4,
-        "netProfit": 0.4,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756506886094",
-        "timestamp": "2025-08-29T22:34:46.094Z"
-      },
-      {
-        "wageredAmount": 0.5,
-        "netProfit": 0.5,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756506504428",
-        "timestamp": "2025-08-29T22:28:24.428Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756506434640",
-        "timestamp": "2025-08-29T22:27:14.640Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "651c897ce3969a34c2f6dbcf63862ae3",
-        "clientSeed": "h2q0zaervw",
-        "nonce": 22,
-        "id": "game_1756504762263",
-        "timestamp": "2025-08-29T21:59:22.263Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "33f7a6c62d0dd7d080ad407100f8feeb",
-        "clientSeed": "h2q0zaervw",
-        "nonce": 21,
-        "id": "game_1756504597807",
-        "timestamp": "2025-08-29T21:56:37.807Z"
-      },
-      {
-        "wageredAmount": 0.3,
-        "netProfit": 0.3,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "6ef67a9417ba29b0540b6f20a41881b0",
-        "clientSeed": "h2q0zaervw",
-        "nonce": 20,
-        "id": "game_1756504560175",
-        "timestamp": "2025-08-29T21:56:00.175Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "30af0cd5438dac77a8d5e9ab8a2d152b",
-        "clientSeed": "h2q0zaervw",
-        "nonce": 19,
-        "id": "game_1756503519440",
-        "timestamp": "2025-08-29T21:38:39.440Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "962cdd9ca753bae6d4bff412b978116a",
-        "clientSeed": "o0yts0nbof",
-        "nonce": 18,
-        "id": "game_1756468206183",
-        "timestamp": "2025-08-29T11:50:06.183Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "7d733e17a075e93c7696b29d4ac3cf47",
-        "clientSeed": "o0yts0nbof",
-        "nonce": 17,
-        "id": "game_1756468185732",
-        "timestamp": "2025-08-29T11:49:45.732Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756468015621",
-        "timestamp": "2025-08-29T11:46:55.621Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "7f3b6d830cac1649e21b77e186dd1c8e",
-        "clientSeed": "o0yts0nbof",
-        "nonce": 15,
-        "id": "game_1756467721302",
-        "timestamp": "2025-08-29T11:42:01.302Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756467567142",
-        "timestamp": "2025-08-29T11:39:27.142Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "aa3984931a8fa91141685d581cbcae86",
-        "clientSeed": "o0yts0nbof",
-        "nonce": 13,
-        "id": "game_1756467491013",
-        "timestamp": "2025-08-29T11:38:11.013Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756467477647",
-        "timestamp": "2025-08-29T11:37:57.647Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "63a9f7be9a5dfc6ed509ab65cc64b410",
-        "clientSeed": "o0yts0nbof",
-        "nonce": 11,
-        "id": "game_1756467454695",
-        "timestamp": "2025-08-29T11:37:34.695Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756467290843",
-        "timestamp": "2025-08-29T11:34:50.843Z"
-      },
-      {
-        "netProfit": 0.02374999999999998,
-        "wageredAmount": 0.1,
-        "multiplier": 1.2374999999999998,
-        "gameMode": "solo",
-        "serverSeed": "65d940b896813232ec9b57564e9c72a3",
-        "clientSeed": "o0yts0nbof",
-        "nonce": 125,
-        "id": "game_1756467214423",
-        "timestamp": "2025-08-29T11:33:34.423Z"
-      },
-      {
-        "netProfit": -0.1,
-        "wageredAmount": 0.1,
-        "multiplier": 0,
-        "gameMode": "solo",
-        "serverSeed": "",
-        "clientSeed": "o0yts0nbof",
-        "nonce": 8,
-        "id": "game_1756467201418",
-        "timestamp": "2025-08-29T11:33:21.418Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756467016780",
-        "timestamp": "2025-08-29T11:30:16.780Z"
-      },
-      {
-        "netProfit": -0.1,
-        "wageredAmount": 0.1,
-        "multiplier": 0,
-        "gameMode": "solo",
-        "serverSeed": "198fe7d5fbd98b8499871b6e7b6c0971",
-        "clientSeed": "o0yts0nbof",
-        "nonce": 103,
-        "id": "game_1756466464662",
-        "timestamp": "2025-08-29T11:21:04.662Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "8d8419d23263898d23ed0e7c57ca3401",
-        "clientSeed": "o0yts0nbof",
-        "nonce": 5,
-        "id": "game_1756466127032",
-        "timestamp": "2025-08-29T11:15:27.032Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "545d194fa95860576fa9232a32625ede",
-        "clientSeed": "o0yts0nbof",
-        "nonce": 4,
-        "id": "game_1756466082424",
-        "timestamp": "2025-08-29T11:14:42.424Z"
-      },
-      {
-        "wageredAmount": 0.1,
-        "netProfit": -0.1,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756465848629",
-        "timestamp": "2025-08-29T11:10:48.629Z"
-      },
-      {
-        "wageredAmount": 0.1,
-        "netProfit": -0.1,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756465842404",
-        "timestamp": "2025-08-29T11:10:42.404Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "84af0e5bf0fc8bf7c8d78847c8dcc682",
-        "clientSeed": "o0yts0nbof",
-        "nonce": 1,
-        "id": "game_1756465599198",
-        "timestamp": "2025-08-29T11:06:39.198Z"
-      }
-    ]
+  "userStats": {
+    "GNTE6wLZuqT7LLXhn33LUNNNNFqL6FFcq8LxYgMKcobu": {
+      "totalWagered": 2.999999999999998,
+      "gameHistory": [
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "6937d9133e2ea4533c5099df29f770038d1e0b135d05ac30c57132c7433b337c",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756561474984",
+          "timestamp": "2025-08-30T13:44:34.984Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "08d537e1bbdaea4f0b7ab5495769138acb0f62ead18b41af90fefddb2eafeab6",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756561408881",
+          "timestamp": "2025-08-30T13:43:28.881Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "32455cc184f39ff7cf8fc17a0c461d4c2be41b87397438adbe659463636225da",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756561039888",
+          "timestamp": "2025-08-30T13:37:19.888Z"
+        },
+        {
+          "netProfit": 0.02374999999999998,
+          "wageredAmount": 0.1,
+          "multiplier": 1.2374999999999998,
+          "gameMode": "solo",
+          "serverSeed": "bf2b1184c642ad79635e614b26b2f2dc",
+          "clientSeed": "ryiuvtwfito",
+          "nonce": 111,
+          "id": "game_1756560684312",
+          "timestamp": "2025-08-30T13:31:24.312Z"
+        },
+        {
+          "netProfit": -0.1,
+          "wageredAmount": 0.1,
+          "multiplier": 0,
+          "gameMode": "solo",
+          "serverSeed": "7bbb6f54f5a1ea2729feff2ca4320f95",
+          "clientSeed": "ryiuvtwfito",
+          "nonce": 99,
+          "id": "game_1756560656339",
+          "timestamp": "2025-08-30T13:30:56.339Z"
+        },
+        {
+          "netProfit": -0.1,
+          "wageredAmount": 0.1,
+          "multiplier": 0,
+          "gameMode": "solo",
+          "serverSeed": "61a9034e8794ac55b7f221e70c24973e",
+          "clientSeed": "ryiuvtwfito",
+          "nonce": 179,
+          "id": "game_1756560647899",
+          "timestamp": "2025-08-30T13:30:47.899Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "e9fb52a457f784b69e35a9bff5357dae3b38136bfa750e1670eebd504dda1274",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756516674937",
+          "timestamp": "2025-08-30T01:17:54.937Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "4b89de01-ac8b-495d-8cc3-c8c0bf793b40:1756515792985",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756515861028",
+          "timestamp": "2025-08-30T01:04:21.028Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "f725d3b5-0999-4071-be47-07b9ef6996d0:1756514769041",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756514777225",
+          "timestamp": "2025-08-30T00:46:17.225Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "a4afc562-a2a7-4e93-a348-c4d8cf77074e:1756514428468",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756514458214",
+          "timestamp": "2025-08-30T00:40:58.214Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "7dfd4d06-1fe5-4946-a751-db96170ed63e:1756514173534",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756514195000",
+          "timestamp": "2025-08-30T00:36:35.000Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "0f74beab-b67a-411d-a2ac-caaa7c6af7c7:1756514099215",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756514111674",
+          "timestamp": "2025-08-30T00:35:11.674Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "c56cd6f9-f752-499a-bbad-f9de40ad4363:1756513802942",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756513826699",
+          "timestamp": "2025-08-30T00:30:26.699Z"
+        },
+        {
+          "netProfit": -0.1,
+          "wageredAmount": 0.1,
+          "multiplier": 0,
+          "gameMode": "solo",
+          "serverSeed": "8a7c1a4aaa7481ca26685eab81eb2d2c",
+          "clientSeed": "etzuj9x9daq",
+          "nonce": 161,
+          "id": "game_1756513000798",
+          "timestamp": "2025-08-30T00:16:40.798Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756509653566",
+          "timestamp": "2025-08-29T23:20:53.566Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756509589020",
+          "timestamp": "2025-08-29T23:19:49.020Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756508944692",
+          "timestamp": "2025-08-29T23:09:04.692Z"
+        },
+        {
+          "wageredAmount": 0.1,
+          "netProfit": -0.1,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756508234532",
+          "timestamp": "2025-08-29T22:57:14.532Z"
+        },
+        {
+          "wageredAmount": 0.1,
+          "netProfit": 0.1,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756508032937",
+          "timestamp": "2025-08-29T22:53:52.937Z"
+        },
+        {
+          "wageredAmount": 0.1,
+          "netProfit": -0.1,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756507604482",
+          "timestamp": "2025-08-29T22:46:44.482Z"
+        },
+        {
+          "wageredAmount": 0.3,
+          "netProfit": 0.3,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756507100489",
+          "timestamp": "2025-08-29T22:38:20.489Z"
+        },
+        {
+          "wageredAmount": 0.4,
+          "netProfit": 0.4,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756506886094",
+          "timestamp": "2025-08-29T22:34:46.094Z"
+        },
+        {
+          "wageredAmount": 0.5,
+          "netProfit": 0.5,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756506504428",
+          "timestamp": "2025-08-29T22:28:24.428Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756506434640",
+          "timestamp": "2025-08-29T22:27:14.640Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "651c897ce3969a34c2f6dbcf63862ae3",
+          "clientSeed": "h2q0zaervw",
+          "nonce": 22,
+          "id": "game_1756504762263",
+          "timestamp": "2025-08-29T21:59:22.263Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "33f7a6c62d0dd7d080ad407100f8feeb",
+          "clientSeed": "h2q0zaervw",
+          "nonce": 21,
+          "id": "game_1756504597807",
+          "timestamp": "2025-08-29T21:56:37.807Z"
+        },
+        {
+          "wageredAmount": 0.3,
+          "netProfit": 0.3,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "6ef67a9417ba29b0540b6f20a41881b0",
+          "clientSeed": "h2q0zaervw",
+          "nonce": 20,
+          "id": "game_1756504560175",
+          "timestamp": "2025-08-29T21:56:00.175Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "30af0cd5438dac77a8d5e9ab8a2d152b",
+          "clientSeed": "h2q0zaervw",
+          "nonce": 19,
+          "id": "game_1756503519440",
+          "timestamp": "2025-08-29T21:38:39.440Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "962cdd9ca753bae6d4bff412b978116a",
+          "clientSeed": "o0yts0nbof",
+          "nonce": 18,
+          "id": "game_1756468206183",
+          "timestamp": "2025-08-29T11:50:06.183Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "7d733e17a075e93c7696b29d4ac3cf47",
+          "clientSeed": "o0yts0nbof",
+          "nonce": 17,
+          "id": "game_1756468185732",
+          "timestamp": "2025-08-29T11:49:45.732Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756468015621",
+          "timestamp": "2025-08-29T11:46:55.621Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "7f3b6d830cac1649e21b77e186dd1c8e",
+          "clientSeed": "o0yts0nbof",
+          "nonce": 15,
+          "id": "game_1756467721302",
+          "timestamp": "2025-08-29T11:42:01.302Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756467567142",
+          "timestamp": "2025-08-29T11:39:27.142Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "aa3984931a8fa91141685d581cbcae86",
+          "clientSeed": "o0yts0nbof",
+          "nonce": 13,
+          "id": "game_1756467491013",
+          "timestamp": "2025-08-29T11:38:11.013Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756467477647",
+          "timestamp": "2025-08-29T11:37:57.647Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "63a9f7be9a5dfc6ed509ab65cc64b410",
+          "clientSeed": "o0yts0nbof",
+          "nonce": 11,
+          "id": "game_1756467454695",
+          "timestamp": "2025-08-29T11:37:34.695Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756467290843",
+          "timestamp": "2025-08-29T11:34:50.843Z"
+        },
+        {
+          "netProfit": 0.02374999999999998,
+          "wageredAmount": 0.1,
+          "multiplier": 1.2374999999999998,
+          "gameMode": "solo",
+          "serverSeed": "65d940b896813232ec9b57564e9c72a3",
+          "clientSeed": "o0yts0nbof",
+          "nonce": 125,
+          "id": "game_1756467214423",
+          "timestamp": "2025-08-29T11:33:34.423Z"
+        },
+        {
+          "netProfit": -0.1,
+          "wageredAmount": 0.1,
+          "multiplier": 0,
+          "gameMode": "solo",
+          "serverSeed": "",
+          "clientSeed": "o0yts0nbof",
+          "nonce": 8,
+          "id": "game_1756467201418",
+          "timestamp": "2025-08-29T11:33:21.418Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756467016780",
+          "timestamp": "2025-08-29T11:30:16.780Z"
+        },
+        {
+          "netProfit": -0.1,
+          "wageredAmount": 0.1,
+          "multiplier": 0,
+          "gameMode": "solo",
+          "serverSeed": "198fe7d5fbd98b8499871b6e7b6c0971",
+          "clientSeed": "o0yts0nbof",
+          "nonce": 103,
+          "id": "game_1756466464662",
+          "timestamp": "2025-08-29T11:21:04.662Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "8d8419d23263898d23ed0e7c57ca3401",
+          "clientSeed": "o0yts0nbof",
+          "nonce": 5,
+          "id": "game_1756466127032",
+          "timestamp": "2025-08-29T11:15:27.032Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "545d194fa95860576fa9232a32625ede",
+          "clientSeed": "o0yts0nbof",
+          "nonce": 4,
+          "id": "game_1756466082424",
+          "timestamp": "2025-08-29T11:14:42.424Z"
+        },
+        {
+          "wageredAmount": 0.1,
+          "netProfit": -0.1,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756465848629",
+          "timestamp": "2025-08-29T11:10:48.629Z"
+        },
+        {
+          "wageredAmount": 0.1,
+          "netProfit": -0.1,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756465842404",
+          "timestamp": "2025-08-29T11:10:42.404Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "84af0e5bf0fc8bf7c8d78847c8dcc682",
+          "clientSeed": "o0yts0nbof",
+          "nonce": 1,
+          "id": "game_1756465599198",
+          "timestamp": "2025-08-29T11:06:39.198Z"
+        }
+      ]
+    },
+    "4PZHyMNyBymw1MXR8JYruvp2EG2AAK9UxPAGrakEVYg3": {
+      "totalWagered": 2.7999999999999994,
+      "gameHistory": [
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "7dfd4d06-1fe5-4946-a751-db96170ed63e:1756514173534",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756514196405",
+          "timestamp": "2025-08-30T00:36:36.405Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756509654989",
+          "timestamp": "2025-08-29T23:20:54.989Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756509590400",
+          "timestamp": "2025-08-29T23:19:50.400Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756508946117",
+          "timestamp": "2025-08-29T23:09:06.117Z"
+        },
+        {
+          "wageredAmount": 0.1,
+          "netProfit": 0.1,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756508235985",
+          "timestamp": "2025-08-29T22:57:15.985Z"
+        },
+        {
+          "wageredAmount": 0.1,
+          "netProfit": -0.1,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756508034310",
+          "timestamp": "2025-08-29T22:53:54.310Z"
+        },
+        {
+          "wageredAmount": 0.1,
+          "netProfit": 0.1,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756507605944",
+          "timestamp": "2025-08-29T22:46:45.944Z"
+        },
+        {
+          "wageredAmount": 0.3,
+          "netProfit": -0.3,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756507101847",
+          "timestamp": "2025-08-29T22:38:21.847Z"
+        },
+        {
+          "wageredAmount": 0.4,
+          "netProfit": -0.4,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756506887457",
+          "timestamp": "2025-08-29T22:34:47.457Z"
+        },
+        {
+          "wageredAmount": 0.3,
+          "netProfit": 0.3,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "80119797d60bdd75fb2cfd9d30f5e156",
+          "clientSeed": "m3myki9b2aq",
+          "nonce": 14,
+          "id": "game_1756506717931",
+          "timestamp": "2025-08-29T22:31:57.931Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "a547724a065c0c359a5db850cd47e5ed",
+          "clientSeed": "m3myki9b2aq",
+          "nonce": 13,
+          "id": "game_1756506682554",
+          "timestamp": "2025-08-29T22:31:22.554Z"
+        },
+        {
+          "netProfit": 0.11263157894736842,
+          "wageredAmount": 0.2,
+          "multiplier": 1.563157894736842,
+          "gameMode": "solo",
+          "serverSeed": "42775b3fc279b76122f94d3d66cd6080",
+          "clientSeed": "m3myki9b2aq",
+          "nonce": 150,
+          "id": "game_1756506661843",
+          "timestamp": "2025-08-29T22:31:01.843Z"
+        },
+        {
+          "netProfit": -0.2,
+          "wageredAmount": 0.2,
+          "multiplier": 0,
+          "gameMode": "solo",
+          "serverSeed": "843e65d7a96c8f727b2c68b4a69e1a3a",
+          "clientSeed": "m3myki9b2aq",
+          "nonce": 252,
+          "id": "game_1756506643504",
+          "timestamp": "2025-08-29T22:30:43.504Z"
+        },
+        {
+          "netProfit": -0.2,
+          "wageredAmount": 0.2,
+          "multiplier": 0,
+          "gameMode": "solo",
+          "serverSeed": "be3671a0f026f2b2f2d4a647856e670f",
+          "clientSeed": "m3myki9b2aq",
+          "nonce": 2,
+          "id": "game_1756506633740",
+          "timestamp": "2025-08-29T22:30:33.740Z"
+        },
+        {
+          "wageredAmount": 0.5,
+          "netProfit": -0.5,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756506505893",
+          "timestamp": "2025-08-29T22:28:25.893Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "",
+          "clientSeed": "",
+          "nonce": 0,
+          "id": "game_1756506436007",
+          "timestamp": "2025-08-29T22:27:16.007Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "f1c36a51085dadd7900c22fec75e7cdc",
+          "clientSeed": "m3myki9b2aq",
+          "nonce": 7,
+          "id": "game_1756505709079",
+          "timestamp": "2025-08-29T22:15:09.079Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "39db02cb4da40270e2194c063f47fa91",
+          "clientSeed": "m3myki9b2aq",
+          "nonce": 6,
+          "id": "game_1756504271456",
+          "timestamp": "2025-08-29T21:51:11.456Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "8576f70e76f2608b757ea954fe27728e",
+          "clientSeed": "m3myki9b2aq",
+          "nonce": 5,
+          "id": "game_1756504017808",
+          "timestamp": "2025-08-29T21:46:57.808Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "7241182ecad8a5d1cded15fea33b40f0",
+          "clientSeed": "m3myki9b2aq",
+          "nonce": 4,
+          "id": "game_1756503528538",
+          "timestamp": "2025-08-29T21:38:48.538Z"
+        },
+        {
+          "netProfit": 0.05631578947368421,
+          "wageredAmount": 0.1,
+          "multiplier": 1.563157894736842,
+          "gameMode": "solo",
+          "serverSeed": "1ff6297dce8f06ace9be1016055c017b",
+          "clientSeed": "m3myki9b2aq",
+          "nonce": 65,
+          "id": "game_1756503471604",
+          "timestamp": "2025-08-29T21:37:51.604Z"
+        },
+        {
+          "netProfit": -0.1,
+          "wageredAmount": 0.1,
+          "multiplier": 0,
+          "gameMode": "solo",
+          "serverSeed": "74aa3254d14d996ee83eb20a2238b3ba",
+          "clientSeed": "m3myki9b2aq",
+          "nonce": 119,
+          "id": "game_1756503457861",
+          "timestamp": "2025-08-29T21:37:37.861Z"
+        },
+        {
+          "netProfit": -0.1,
+          "wageredAmount": 0.1,
+          "multiplier": 0,
+          "gameMode": "solo",
+          "serverSeed": "cedcad63aa739f3aec55b5ffd6b98919",
+          "clientSeed": "m3myki9b2aq",
+          "nonce": 193,
+          "id": "game_1756503449948",
+          "timestamp": "2025-08-29T21:37:29.948Z"
+        }
+      ]
+    },
+    "F6rDmkChjXByXmsjRjguKFAUx9SCcuGKQLcQQLbRXeVE": {
+      "totalWagered": 0,
+      "gameHistory": []
+    },
+    "8bPoWpometWhNCwtmqTxJWjeyW3hGtfU9xgudfx8XGXH": {
+      "totalWagered": 0.20000000000000004,
+      "gameHistory": [
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "6937d9133e2ea4533c5099df29f770038d1e0b135d05ac30c57132c7433b337c",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756561474958",
+          "timestamp": "2025-08-30T13:44:34.958Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "08d537e1bbdaea4f0b7ab5495769138acb0f62ead18b41af90fefddb2eafeab6",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756561408854",
+          "timestamp": "2025-08-30T13:43:28.854Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "32455cc184f39ff7cf8fc17a0c461d4c2be41b87397438adbe659463636225da",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756561039871",
+          "timestamp": "2025-08-30T13:37:19.871Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "e9fb52a457f784b69e35a9bff5357dae3b38136bfa750e1670eebd504dda1274",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756516674852",
+          "timestamp": "2025-08-30T01:17:54.852Z"
+        },
+        {
+          "netProfit": -0.1,
+          "wageredAmount": 0.1,
+          "multiplier": 0,
+          "gameMode": "solo",
+          "serverSeed": "c88123bc5cb3651419cdb84eb7a67c26",
+          "clientSeed": "ennpde83h0m",
+          "nonce": 56,
+          "id": "game_1756515917771",
+          "timestamp": "2025-08-30T01:05:17.771Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "4b89de01-ac8b-495d-8cc3-c8c0bf793b40:1756515792985",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756515861008",
+          "timestamp": "2025-08-30T01:04:21.008Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "2f75d927-5c28-4474-a280-d7dd20ffd09d:1756515013700",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756515038214",
+          "timestamp": "2025-08-30T00:50:38.214Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "f725d3b5-0999-4071-be47-07b9ef6996d0:1756514769041",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756514777189",
+          "timestamp": "2025-08-30T00:46:17.189Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "a4afc562-a2a7-4e93-a348-c4d8cf77074e:1756514428468",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756514458249",
+          "timestamp": "2025-08-30T00:40:58.249Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "0f74beab-b67a-411d-a2ac-caaa7c6af7c7:1756514099215",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756514111620",
+          "timestamp": "2025-08-30T00:35:11.620Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "c56cd6f9-f752-499a-bbad-f9de40ad4363:1756513802942",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756513826663",
+          "timestamp": "2025-08-30T00:30:26.663Z"
+        }
+      ]
+    },
+    "5GHMPskpm21G3efYZRoHrCgYZKNTSkMMBVY3vne7PUQm": {
+      "totalWagered": 0,
+      "gameHistory": []
+    },
+    "JsjcDEV3x7UBSBeBNP1K3zGHA8ZjykKqWxUEKdoiXTD": {
+      "totalWagered": 0.03,
+      "gameHistory": [
+        {
+          "wageredAmount": 0.01,
+          "netProfit": 0.01,
+          "multiplier": 2,
+          "gameMode": "1v1",
+          "serverSeed": "e9fb52a457f784b69e35a9bff5357dae3b38136bfa750e1670eebd504dda1274",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756516674888",
+          "timestamp": "2025-08-30T01:17:54.888Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "4b89de01-ac8b-495d-8cc3-c8c0bf793b40:1756515792985",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756515861029",
+          "timestamp": "2025-08-30T01:04:21.029Z"
+        },
+        {
+          "wageredAmount": 0.01,
+          "netProfit": -0.01,
+          "multiplier": 0,
+          "gameMode": "1v1",
+          "serverSeed": "2f75d927-5c28-4474-a280-d7dd20ffd09d:1756515013700",
+          "clientSeed": "shared",
+          "nonce": 0,
+          "id": "game_1756515038243",
+          "timestamp": "2025-08-30T00:50:38.243Z"
+        }
+      ]
+    },
+    "FvxCxDEHvX1ZuLmh9pt4eycbcA4jZxpa5GnSe8vBv8JF": {
+      "totalWagered": 0,
+      "gameHistory": []
+    }
   },
-  "4PZHyMNyBymw1MXR8JYruvp2EG2AAK9UxPAGrakEVYg3": {
-    "totalWagered": 2.7999999999999994,
-    "gameHistory": [
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "7dfd4d06-1fe5-4946-a751-db96170ed63e:1756514173534",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756514196405",
-        "timestamp": "2025-08-30T00:36:36.405Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756509654989",
-        "timestamp": "2025-08-29T23:20:54.989Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756509590400",
-        "timestamp": "2025-08-29T23:19:50.400Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756508946117",
-        "timestamp": "2025-08-29T23:09:06.117Z"
-      },
-      {
-        "wageredAmount": 0.1,
-        "netProfit": 0.1,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756508235985",
-        "timestamp": "2025-08-29T22:57:15.985Z"
-      },
-      {
-        "wageredAmount": 0.1,
-        "netProfit": -0.1,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756508034310",
-        "timestamp": "2025-08-29T22:53:54.310Z"
-      },
-      {
-        "wageredAmount": 0.1,
-        "netProfit": 0.1,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756507605944",
-        "timestamp": "2025-08-29T22:46:45.944Z"
-      },
-      {
-        "wageredAmount": 0.3,
-        "netProfit": -0.3,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756507101847",
-        "timestamp": "2025-08-29T22:38:21.847Z"
-      },
-      {
-        "wageredAmount": 0.4,
-        "netProfit": -0.4,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756506887457",
-        "timestamp": "2025-08-29T22:34:47.457Z"
-      },
-      {
-        "wageredAmount": 0.3,
-        "netProfit": 0.3,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "80119797d60bdd75fb2cfd9d30f5e156",
-        "clientSeed": "m3myki9b2aq",
-        "nonce": 14,
-        "id": "game_1756506717931",
-        "timestamp": "2025-08-29T22:31:57.931Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "a547724a065c0c359a5db850cd47e5ed",
-        "clientSeed": "m3myki9b2aq",
-        "nonce": 13,
-        "id": "game_1756506682554",
-        "timestamp": "2025-08-29T22:31:22.554Z"
-      },
-      {
-        "netProfit": 0.11263157894736842,
-        "wageredAmount": 0.2,
-        "multiplier": 1.563157894736842,
-        "gameMode": "solo",
-        "serverSeed": "42775b3fc279b76122f94d3d66cd6080",
-        "clientSeed": "m3myki9b2aq",
-        "nonce": 150,
-        "id": "game_1756506661843",
-        "timestamp": "2025-08-29T22:31:01.843Z"
-      },
-      {
-        "netProfit": -0.2,
-        "wageredAmount": 0.2,
-        "multiplier": 0,
-        "gameMode": "solo",
-        "serverSeed": "843e65d7a96c8f727b2c68b4a69e1a3a",
-        "clientSeed": "m3myki9b2aq",
-        "nonce": 252,
-        "id": "game_1756506643504",
-        "timestamp": "2025-08-29T22:30:43.504Z"
-      },
-      {
-        "netProfit": -0.2,
-        "wageredAmount": 0.2,
-        "multiplier": 0,
-        "gameMode": "solo",
-        "serverSeed": "be3671a0f026f2b2f2d4a647856e670f",
-        "clientSeed": "m3myki9b2aq",
-        "nonce": 2,
-        "id": "game_1756506633740",
-        "timestamp": "2025-08-29T22:30:33.740Z"
-      },
-      {
-        "wageredAmount": 0.5,
-        "netProfit": -0.5,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756506505893",
-        "timestamp": "2025-08-29T22:28:25.893Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "",
-        "clientSeed": "",
-        "nonce": 0,
-        "id": "game_1756506436007",
-        "timestamp": "2025-08-29T22:27:16.007Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "f1c36a51085dadd7900c22fec75e7cdc",
-        "clientSeed": "m3myki9b2aq",
-        "nonce": 7,
-        "id": "game_1756505709079",
-        "timestamp": "2025-08-29T22:15:09.079Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "39db02cb4da40270e2194c063f47fa91",
-        "clientSeed": "m3myki9b2aq",
-        "nonce": 6,
-        "id": "game_1756504271456",
-        "timestamp": "2025-08-29T21:51:11.456Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "8576f70e76f2608b757ea954fe27728e",
-        "clientSeed": "m3myki9b2aq",
-        "nonce": 5,
-        "id": "game_1756504017808",
-        "timestamp": "2025-08-29T21:46:57.808Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "7241182ecad8a5d1cded15fea33b40f0",
-        "clientSeed": "m3myki9b2aq",
-        "nonce": 4,
-        "id": "game_1756503528538",
-        "timestamp": "2025-08-29T21:38:48.538Z"
-      },
-      {
-        "netProfit": 0.05631578947368421,
-        "wageredAmount": 0.1,
-        "multiplier": 1.563157894736842,
-        "gameMode": "solo",
-        "serverSeed": "1ff6297dce8f06ace9be1016055c017b",
-        "clientSeed": "m3myki9b2aq",
-        "nonce": 65,
-        "id": "game_1756503471604",
-        "timestamp": "2025-08-29T21:37:51.604Z"
-      },
-      {
-        "netProfit": -0.1,
-        "wageredAmount": 0.1,
-        "multiplier": 0,
-        "gameMode": "solo",
-        "serverSeed": "74aa3254d14d996ee83eb20a2238b3ba",
-        "clientSeed": "m3myki9b2aq",
-        "nonce": 119,
-        "id": "game_1756503457861",
-        "timestamp": "2025-08-29T21:37:37.861Z"
-      },
-      {
-        "netProfit": -0.1,
-        "wageredAmount": 0.1,
-        "multiplier": 0,
-        "gameMode": "solo",
-        "serverSeed": "cedcad63aa739f3aec55b5ffd6b98919",
-        "clientSeed": "m3myki9b2aq",
-        "nonce": 193,
-        "id": "game_1756503449948",
-        "timestamp": "2025-08-29T21:37:29.948Z"
-      }
-    ]
+  "userProfiles": {
+    "GNTE6wLZuqT7LLXhn33LUNNNNFqL6FFcq8LxYgMKcobu": {
+      "name": "REGELE",
+      "email": "",
+      "avatarUrl": "data:image/jpeg;base64,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",
+      "clientSeed": "ryiuvtwfito"
+    },
+    "8bPoWpometWhNCwtmqTxJWjeyW3hGtfU9xgudfx8XGXH": {
+      "name": "trex",
+      "email": "",
+      "avatarUrl": "data:image/jpeg;base64,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",
+      "clientSeed": "skztmn2f8t"
+    }
   },
-  "F6rDmkChjXByXmsjRjguKFAUx9SCcuGKQLcQQLbRXeVE": {
-    "totalWagered": 0,
-    "gameHistory": []
-  },
-  "8bPoWpometWhNCwtmqTxJWjeyW3hGtfU9xgudfx8XGXH": {
-    "totalWagered": 0.17,
-    "gameHistory": [
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "e9fb52a457f784b69e35a9bff5357dae3b38136bfa750e1670eebd504dda1274",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756516674852",
-        "timestamp": "2025-08-30T01:17:54.852Z"
-      },
-      {
-        "netProfit": -0.1,
-        "wageredAmount": 0.1,
-        "multiplier": 0,
-        "gameMode": "solo",
-        "serverSeed": "c88123bc5cb3651419cdb84eb7a67c26",
-        "clientSeed": "ennpde83h0m",
-        "nonce": 56,
-        "id": "game_1756515917771",
-        "timestamp": "2025-08-30T01:05:17.771Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "4b89de01-ac8b-495d-8cc3-c8c0bf793b40:1756515792985",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756515861008",
-        "timestamp": "2025-08-30T01:04:21.008Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "2f75d927-5c28-4474-a280-d7dd20ffd09d:1756515013700",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756515038214",
-        "timestamp": "2025-08-30T00:50:38.214Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "f725d3b5-0999-4071-be47-07b9ef6996d0:1756514769041",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756514777189",
-        "timestamp": "2025-08-30T00:46:17.189Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "a4afc562-a2a7-4e93-a348-c4d8cf77074e:1756514428468",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756514458249",
-        "timestamp": "2025-08-30T00:40:58.249Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "0f74beab-b67a-411d-a2ac-caaa7c6af7c7:1756514099215",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756514111620",
-        "timestamp": "2025-08-30T00:35:11.620Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "c56cd6f9-f752-499a-bbad-f9de40ad4363:1756513802942",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756513826663",
-        "timestamp": "2025-08-30T00:30:26.663Z"
-      }
-    ]
-  },
-  "5GHMPskpm21G3efYZRoHrCgYZKNTSkMMBVY3vne7PUQm": {
-    "totalWagered": 0,
-    "gameHistory": []
-  },
-  "JsjcDEV3x7UBSBeBNP1K3zGHA8ZjykKqWxUEKdoiXTD": {
-    "totalWagered": 0.03,
-    "gameHistory": [
-      {
-        "wageredAmount": 0.01,
-        "netProfit": 0.01,
-        "multiplier": 2,
-        "gameMode": "1v1",
-        "serverSeed": "e9fb52a457f784b69e35a9bff5357dae3b38136bfa750e1670eebd504dda1274",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756516674888",
-        "timestamp": "2025-08-30T01:17:54.888Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "4b89de01-ac8b-495d-8cc3-c8c0bf793b40:1756515792985",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756515861029",
-        "timestamp": "2025-08-30T01:04:21.029Z"
-      },
-      {
-        "wageredAmount": 0.01,
-        "netProfit": -0.01,
-        "multiplier": 0,
-        "gameMode": "1v1",
-        "serverSeed": "2f75d927-5c28-4474-a280-d7dd20ffd09d:1756515013700",
-        "clientSeed": "shared",
-        "nonce": 0,
-        "id": "game_1756515038243",
-        "timestamp": "2025-08-30T00:50:38.243Z"
-      }
-    ]
-  }
+  "chatHistory": [
+    {
+      "id": "msg_1756560579221_h953lx",
+      "from": "GNTE6wLZuqT7LLXhn33LUNNNNFqL6FFcq8LxYgMKcobu",
+      "name": "User...cobu",
+      "text": "dawd",
+      "level": 1,
+      "avatarUrl": "/src/assets/default-avatar.png",
+      "timestamp": 1756560579232
+    },
+    {
+      "id": "msg_1756560598841_zse6gf",
+      "from": "GNTE6wLZuqT7LLXhn33LUNNNNFqL6FFcq8LxYgMKcobu",
+      "name": "REGELE",
+      "text": "DA",
+      "level": 1,
+      "avatarUrl": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCABIAIADASIAAhEBAxEB/8QAGwABAAMBAQEBAAAAAAAAAAAAAAMEBQYCAQj/xAA3EAACAQMDAwIDBAgHAAAAAAABAgMABBEFEiEGIjFBYRMyURQVI5EWJDM1QmNxgZOUocHR0+H/xAAXAQEBAQEAAAAAAAAAAAAAAAAAAQID/8QAHxEBAQACAgIDAQAAAAAAAAAAAAECERIhA0ExYfBR/9oADAMBAAIRAxEAPwD9U0pSgUpSgUpUYyqyNksckgE/6UElK5ecj791GOOxuG1Y7JLW5a2YxJHtRf2wCrtD7maLfuIDEDBFaCR64ssZa+0yaMSKJESydDtz3YJmODj2NZ5fTNy+mxSsOwv72O4t/vKeylhv5njtRbxMrR4VnCsdzB+1Gyw28jGOeNyrLv4WWX4KUpVUpSlApSlApSlApSlAqu9xGnxFbfkZ8IT/ALVHqV8tlBM7AApBJPvkJSIBAM75MEL5/IE4ODWJ0l1Vb9Q9Px6gqDErOv6mZLmLtYr2yhAG8eg4OR6Vm3TOV06D7VF/M/w2/wCKonU7e0guJ5hKIUl/EcRnEan+JvXaPU+g5OACRx1rYWVr1GEjuOq2EVxPO0UDypbu07PJ+IoAIC7iFPGSvOTnO3rNmq9O9QRwXF1GJLWYEl3dhhT4LkgeceM+/FZuWu2LnZ2k1PTLWz1zp+aFZDI+oyndJK8mwNbTkhNxOxSQO1cDgccCunrH6jt7p30u6sxalrK6M7rczGJSphkj+YK3OZB6elZB6lvrXWJvvFtJ+wJBERBZzNPOJHkKAliFHd2hIwu5yr4JIClLJlZf3RjlJlZf3Tr6UpXR1KUpQKUpQKUpQKUpQCQoJJAA5JNeA6SRFo2VlIOCpyK8XFuJ8kySIxjaMFW4AbHO08EjHBIOOfqaq2emLaWpjNxeXL+S8sx3McY8DCjwPAH1PJJqXfpLv00Kwdf46f1psZHwLgefqn/lNS1XU4NY02w07TLeZZ0klne6vDCyRo0akoFR97fieGKDgc85FS61C21PpTUbq0kV4p7KaZORna0YIyP71z8lnFy8uUuLTk1RobuwjuI1WO+kaKIq2WDhWcAgZBBVHOc8YHHPF5rK1N8t81vCbxIzEs5Qb1QnJUN5AJAJHsKjs9MtrSeSaH47SOzHMs8ku3cQSFDEhV4HauBx4q1KC0ThWKEggMMZHuM8V0de1SDVLGfUJ7GG5ja7hO1488g7VYj3IV0Jx4DLnyKuO6xqWdlVR6k4Fc/aaNfyanfTaneB7YzRm2EXbIY0UEb2AXB+I0uQvldgJ+YHTvdNS6h2LcXcDZyHimORxjwcg+fUH6+QDSbtibv8XgQQCDkH1pXxFKoqlixAxk4yffivtVopSlApSlApSvFxKlvBJNKSI41LsQCcADJ4HJoKmpz30TRrZW0ckbJIZJnc5iIHbiMDL5PkZXgHnOBUWjTXlxpEb6kqNcMp37YGhX+mxiSMeOTzjPrUMXU2lywiWGS5lTcFPw7SZipKhu4BcrwfXHII8ggWrjVLSJLYyGYpdFVjZYJGGWIA3EDC5JHzY81Klm0Uul20l9HPEGgkjieJkgYJvR9ud2BkcoCCCCOea9Q2cMmnXNgIFS1YNB8OPChUxtwMeOKwuooemLe4bVdbR94kVAWgkZlYHtIVV3YzHuU8jK7l55rbsdV094JGtxcKgbw9tKhckE9gZQX4BPbnxU4+mZj6Y9rpj2t3EvTsEdhK08s2ozSWmyOdmBBLKuwSSM207x6KcnkBtgwa0R+8NO/yL/8AdWgkyOFK7+fqhH58ceazf0hsDJJGv2xnjk+EQtlOcnnlcJ3L2nuGR78inGLcZWtSqTanbpOInFwrHjc1tIE+Xd85XaOPfzx54q7WmilKUClKUClKUClKUClKUClKUClKUClKUClKUClKUH//2Q==",
+      "timestamp": 1756560598853
+    },
+    {
+      "id": "msg_1756560618278_3rvin0",
+      "from": "8bPoWpometWhNCwtmqTxJWjeyW3hGtfU9xgudfx8XGXH",
+      "name": "trex",
+      "text": "adwd",
+      "level": 1,
+      "avatarUrl": "data:image/jpeg;base64,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",
+      "timestamp": 1756560618293,
+      "replyToId": "msg_1756560598841_zse6gf",
+      "replyToName": "REGELE",
+      "replySnippet": "DA"
+    }
+  ]
 }

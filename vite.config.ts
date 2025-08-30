@@ -12,10 +12,11 @@ export default defineConfig(({ mode }) => ({
       "auction-craps-fur-ns.trycloudflare.com",
       "venture-hoped-uniprotkb-milwaukee.trycloudflare.com",
       "sharon-fx-hon-slight.trycloudflare.com",
+      "office-wiki-enquiry-persistent.trycloudflare.com",
     ],
     hmr: {
       protocol: "wss",
-      host: "sharon-fx-hon-slight.trycloudflare.com",
+      host: "office-wiki-enquiry-persistent.trycloudflare.com",
       clientPort: 443,
     },
     proxy: {

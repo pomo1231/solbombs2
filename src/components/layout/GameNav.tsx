@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useStats } from '@/context/StatsContext';
 import { generateAvatarUrl } from '@/lib/utils';
@@ -28,7 +29,19 @@ export const GameNav = () => {
     return defaultAvatar;
   };
 
+  const claimGuard = () => {
+    try {
+      const raw = localStorage.getItem('pvp_claim_required');
+      if (raw) {
+        toast({ title: 'Claim required', description: 'Please claim your 1v1 winnings before leaving.', variant: 'destructive' });
+        return false;
+      }
+    } catch {}
+    return true;
+  };
+
   const handleNav = (tab: 'solo' | '1v1') => {
+    if (!claimGuard()) return;
     navigate(`/?tab=${tab}`);
   };
 
@@ -60,7 +73,7 @@ export const GameNav = () => {
                 <WalletConnect />
               </div>
               <button
-                onClick={() => navigate('/options')}
+                onClick={() => { if (claimGuard()) navigate('/options'); }}
                 className="w-10 h-10 rounded-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary"
               >
                 <img src={getAvatar()} alt="User Avatar" className="w-full h-full object-cover" />
@@ -76,13 +89,13 @@ export const GameNav = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => navigate('/options')}>
+              <DropdownMenuItem onClick={() => { if (claimGuard()) navigate('/options'); }}>
                 Options
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/statistics')}>
+              <DropdownMenuItem onClick={() => { if (claimGuard()) navigate('/statistics'); }}>
                 Statistics
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/transactions')}>
+              <DropdownMenuItem onClick={() => { if (claimGuard()) navigate('/transactions'); }}>
                 Transactions
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => disconnect()}>

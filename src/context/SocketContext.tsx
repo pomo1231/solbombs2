@@ -30,11 +30,14 @@ interface ISocketContext {
     sendRequest: <T=any>(type: string, payload?: Record<string, any>) => Promise<T>;
     getStats: (wallet: string) => Promise<{ totalWagered: number; gameHistory: any[] } | null>;
     putStats: (args: { wallet: string; payload: { totalWagered: number; gameHistory: any[] } }) => Promise<boolean>;
+    getProfile: (wallet: string) => Promise<{ name?: string; email?: string; avatarUrl?: string; clientSeed?: string } | null>;
+    putProfile: (args: { wallet: string; profile: { name?: string; email?: string; avatarUrl?: string; clientSeed?: string } }) => Promise<boolean>;
     setStartGameHandler?: (handler: ((payload: any) => void) | undefined) => void;
     setPvpMoveHandler?: (handler: ((payload: { lobbyId: string; tileId: number; by?: 'creator' | 'joiner' }) => void) | undefined) => void;
     setStartSpectateHandler?: (handler: ((payload: any) => void) | undefined) => void;
     setGameOverHandler?: (handler: ((payload: { lobbyId: string }) => void) | undefined) => void;
     setPfFinalSeedHandler?: (handler: ((payload: { lobbyId: string; boardSeed: string; betAmount?: number; bombCount?: number; startsBy?: 'creator'|'joiner'; yourRole?: 'creator'|'joiner' }) => void) | undefined) => void;
+    setWinningsClaimedHandler?: (handler: ((payload: { lobbyId: string }) => void) | undefined) => void;
 }
 
 const SocketContext = createContext<ISocketContext | undefined>(undefined);
@@ -51,6 +54,7 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
     const startSpectateHandlerRef = useRef<((payload: any) => void) | undefined>(undefined);
     const gameOverHandlerRef = useRef<((payload: { lobbyId: string }) => void) | undefined>(undefined);
     const pfFinalSeedHandlerRef = useRef<((payload: { lobbyId: string; boardSeed: string; betAmount?: number; bombCount?: number; startsBy?: 'creator'|'joiner'; yourRole?: 'creator'|'joiner' }) => void) | undefined>(undefined);
+    const winningsClaimedHandlerRef = useRef<((payload: { lobbyId: string }) => void) | undefined>(undefined);
 
     useEffect(() => {
         const g = window as any;
@@ -126,6 +130,11 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
                         if (h) h({ lobbyId: data.lobbyId, boardSeed: data.boardSeed, betAmount: data.betAmount, bombCount: data.bombCount, startsBy: data.startsBy, yourRole: data.yourRole });
                         break;
                     }
+                    case 'winningsClaimed': {
+                        const h = winningsClaimedHandlerRef.current;
+                        if (h) h({ lobbyId: data.lobbyId });
+                        break;
+                    }
                     case 'stats':
                     case 'ok':
                     case 'error': {
@@ -180,8 +189,25 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }
     };
 
+    const getProfile = async (wallet: string) => {
+        try {
+            const res: any = await sendRequest('getProfile', { wallet });
+            if (res && Object.prototype.hasOwnProperty.call(res, 'profile')) return res.profile || null;
+        } catch {}
+        return null;
+    };
+
+    const putProfile = async ({ wallet, profile }: { wallet: string; profile: { name?: string; email?: string; avatarUrl?: string; clientSeed?: string } }) => {
+        try {
+            await sendRequest('putProfile', { wallet, profile });
+            return true;
+        } catch {
+            return false;
+        }
+    };
+
     return (
-        <SocketContext.Provider value={{ onlineCount, lobbies, ready, sendMessage, sendRequest, getStats, putStats, setStartGameHandler: (h) => { startGameHandlerRef.current = h; }, setPvpMoveHandler: (h) => { pvpMoveHandlerRef.current = h; }, setStartSpectateHandler: (h) => { startSpectateHandlerRef.current = h; }, setGameOverHandler: (h) => { gameOverHandlerRef.current = h; }, setPfFinalSeedHandler: (h) => { pfFinalSeedHandlerRef.current = h; } }}>
+        <SocketContext.Provider value={{ onlineCount, lobbies, ready, sendMessage, sendRequest, getStats, putStats, getProfile, putProfile, setStartGameHandler: (h) => { startGameHandlerRef.current = h; }, setPvpMoveHandler: (h) => { pvpMoveHandlerRef.current = h; }, setStartSpectateHandler: (h) => { startSpectateHandlerRef.current = h; }, setGameOverHandler: (h) => { gameOverHandlerRef.current = h; }, setPfFinalSeedHandler: (h) => { pfFinalSeedHandlerRef.current = h; }, setWinningsClaimedHandler: (h) => { winningsClaimedHandlerRef.current = h; } }}>
             {children}
         </SocketContext.Provider>
     );

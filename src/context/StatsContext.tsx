@@ -97,6 +97,54 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [publicKey]);
 
+  // Cross-device profile sync: fetch from server on wallet connect and socket ready,
+  // then merge with local and persist both locally and server-side
+  useEffect(() => {
+    const run = async () => {
+      if (!publicKey || !socket?.ready) return;
+      const walletStr = publicKey.toBase58();
+      try {
+        const serverProfile = await socket.getProfile(walletStr);
+        const localStr = localStorage.getItem(`userProfile_${walletStr}`);
+        let localProfile: UserProfile | null = null;
+        try { localProfile = localStr ? JSON.parse(localStr) : null; } catch { localProfile = null; }
+
+        const ensureDefaults = (p: any): UserProfile | null => {
+          if (!p) return null;
+          return {
+            name: typeof p.name === 'string' && p.name ? p.name : (localProfile?.name || `User...${walletStr.slice(-4)}`),
+            email: typeof p.email === 'string' ? p.email : (localProfile?.email || ''),
+            avatarUrl: typeof p.avatarUrl === 'string' && p.avatarUrl ? p.avatarUrl : (localProfile?.avatarUrl || defaultAvatar),
+            clientSeed: typeof p.clientSeed === 'string' && p.clientSeed ? p.clientSeed : (localProfile?.clientSeed || Math.random().toString(36).substring(2)),
+          };
+        };
+
+        const srv = ensureDefaults(serverProfile);
+        const loc = ensureDefaults(localProfile);
+        let finalProfile: UserProfile;
+        if (srv) finalProfile = srv;
+        else if (loc) finalProfile = loc;
+        else {
+          finalProfile = {
+            name: `User...${walletStr.slice(-4)}`,
+            email: '',
+            avatarUrl: defaultAvatar,
+            clientSeed: Math.random().toString(36).substring(2),
+          };
+        }
+
+        setUserProfile(finalProfile);
+        try { localStorage.setItem(`userProfile_${walletStr}`, JSON.stringify(finalProfile)); } catch {}
+
+        // Push to server if server had none or to fill any missing fields
+        try { await socket.putProfile({ wallet: walletStr, profile: finalProfile }); } catch {}
+      } catch {
+        // fail soft
+      }
+    };
+    run();
+  }, [publicKey, socket?.ready]);
+
   // Load saved stats for the active wallet only. If wallet disconnects, keep current in-memory state.
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -204,6 +252,7 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!publicKey) return;
       setUserProfile(profile);
       localStorage.setItem(`userProfile_${publicKey.toBase58()}`, JSON.stringify(profile));
+      try { socket?.putProfile({ wallet: publicKey.toBase58(), profile }); } catch {}
   }
 
   const totalGames = gameHistory.length;

@@ -10,6 +10,11 @@ import { PublicKey } from '@solana/web3.js';
 import { randomUUID, createHash } from 'crypto';
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8081;
+// Chat history constants (persisted in stats-db.json)
+const CHAT_HISTORY_LIMIT = 500;
+/** @type {Array<{id?:string, from:string, name?:string, text:string, level?:number, avatarUrl?:string, timestamp:number, replyToId?:string, replyToName?:string, replySnippet?:string}>} */
+let chatHistory = [];
+
 // Create an HTTP server to serve simple APIs and allow CORS, and attach WS to it
 const httpServer = http.createServer(async (req, res) => {
   // Basic CORS
@@ -44,12 +49,27 @@ const httpServer = http.createServer(async (req, res) => {
     }
     return;
   }
+  if (req.method === 'GET' && parsed.pathname === '/getRecentMessages') {
+    const afterId = parsed.query.afterId;
+    const recentMessages = chatHistory.slice();
+    if (afterId) {
+      const afterIndex = recentMessages.findIndex(m => m.id === afterId);
+      if (afterIndex !== -1) {
+        recentMessages.splice(0, afterIndex + 1);
+      }
+    }
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(recentMessages));
+    return;
+  }
   // default health
   res.statusCode = 200;
   res.setHeader('Content-Type', 'application/json');
   res.end(JSON.stringify({ ok: true }));
 });
 
+// Create WS server attached to HTTP server
 const wss = new WebSocketServer({ server: httpServer });
 
 // In-memory data stores
@@ -57,26 +77,40 @@ let lobbies = [];
 const clients = new Map(); // ws -> clientId
 const sessionToWs = new Map(); // sessionId -> ws
 
-// Simple file-backed storage for user stats
+// Simple file-backed storage for user stats and profiles
 const DB_PATH = path.join(process.cwd(), 'stats-db.json');
 /** @type {Record<string, { totalWagered: number, gameHistory: any[] }>} */
 let userStats = {};
+/** @type {Record<string, { name?: string; email?: string; avatarUrl?: string; clientSeed?: string }>} */
+let userProfiles = {};
 
 function loadDb() {
   try {
     if (fs.existsSync(DB_PATH)) {
-      const data = fs.readFileSync(DB_PATH, 'utf-8');
-      userStats = JSON.parse(data);
+      const text = fs.readFileSync(DB_PATH, 'utf-8');
+      const data = JSON.parse(text || '{}');
+      if (data && (data.userStats || data.userProfiles || data.chatHistory)) {
+        userStats = data.userStats || {};
+        userProfiles = data.userProfiles || {};
+        chatHistory = Array.isArray(data.chatHistory) ? data.chatHistory.slice(-CHAT_HISTORY_LIMIT) : [];
+      } else if (data && typeof data === 'object') {
+        // Backward compatibility: old format stored stats map at root
+        userStats = data;
+        userProfiles = {};
+        chatHistory = [];
+      }
     }
   } catch (e) {
     console.error('Failed to load stats DB:', e);
     userStats = {};
+    userProfiles = {};
   }
 }
 
 function saveDb() {
   try {
-    fs.writeFileSync(DB_PATH, JSON.stringify(userStats, null, 2));
+    const payload = { userStats, userProfiles, chatHistory: chatHistory.slice(-CHAT_HISTORY_LIMIT) };
+    fs.writeFileSync(DB_PATH, JSON.stringify(payload, null, 2));
   } catch (e) {
     console.error('Failed to save stats DB:', e);
   }
@@ -322,20 +356,53 @@ wss.on('connection', function connection(ws) {
       }
 
       case 'gameOver': {
-        const { lobbyId } = message;
+        const { lobbyId, winner } = message; // winner: 'creator' | 'joiner'
         const lobby = lobbies.find(l => l.id === lobbyId);
         if (!lobby) break;
         lobby.status = 'finished';
         lobby.spectators = [];
+        // winner bookkeeping
+        if (winner === 'creator' || winner === 'joiner') {
+          lobby.winner = winner;
+          lobby.winnerClientId = winner === 'creator' ? lobby.createdBy : lobby.joinedBy;
+        } else {
+          lobby.winner = undefined;
+          lobby.winnerClientId = undefined;
+        }
+        lobby.winningsClaimed = false;
         broadcast({ type: 'lobbies', lobbies: lobbies.filter(l => l.status !== 'finished') });
         const notify = { 
           type: 'gameOver', 
           lobbyId,
+          winner: lobby.winner,
           pfReveal: lobby.pf ? { commitHash: lobby.pf.commitHash, serverSecret: lobby.pf.serverSecret } : undefined,
         };
         for (const client of wss.clients) {
           if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(notify));
         }
+        break;
+      }
+
+      case 'claimWinnings': {
+        const { lobbyId } = message;
+        const lobby = lobbies.find(l => l.id === lobbyId);
+        if (!lobby || lobby.status !== 'finished') {
+          ws.send(JSON.stringify({ type: 'error', code: 'LOBBY_NOT_FINISHED', reqId: message.reqId }));
+          break;
+        }
+        const senderId = clients.get(ws);
+        if (!lobby.winnerClientId || lobby.winnerClientId !== senderId) {
+          ws.send(JSON.stringify({ type: 'error', code: 'NOT_WINNER', reqId: message.reqId }));
+          break;
+        }
+        if (lobby.winningsClaimed) {
+          ws.send(JSON.stringify({ type: 'ok', message: 'ALREADY_CLAIMED', reqId: message.reqId }));
+          break;
+        }
+        lobby.winningsClaimed = true;
+        // In a real integration, trigger on-chain payout here or verify it was done.
+        broadcast({ type: 'winningsClaimed', lobbyId });
+        ws.send(JSON.stringify({ type: 'ok', reqId: message.reqId }));
         break;
       }
       
@@ -374,14 +441,50 @@ wss.on('connection', function connection(ws) {
         break;
       }
 
+      case 'getProfile': {
+        const { wallet } = message;
+        if (typeof wallet !== 'string') break;
+        const profile = userProfiles[wallet] || null;
+        ws.send(JSON.stringify({ type: 'profile', wallet, profile, reqId: message.reqId }));
+        break;
+      }
+
+      case 'putProfile': {
+        const { wallet, profile } = message;
+        try {
+          if (typeof wallet !== 'string' || typeof profile !== 'object' || profile === null) break;
+          const sanitized = {
+            name: typeof profile.name === 'string' ? profile.name : undefined,
+            email: typeof profile.email === 'string' ? profile.email : undefined,
+            avatarUrl: typeof profile.avatarUrl === 'string' ? profile.avatarUrl : undefined,
+            clientSeed: typeof profile.clientSeed === 'string' ? profile.clientSeed : undefined,
+          };
+          userProfiles[wallet] = { ...(userProfiles[wallet] || {}), ...sanitized };
+          saveDb();
+          ws.send(JSON.stringify({ type: 'ok', reqId: message.reqId }));
+        } catch (e) {
+          console.error('putProfile failed:', e);
+          ws.send(JSON.stringify({ type: 'error', code: 'SERVER', reqId: message.reqId }));
+        }
+        break;
+      }
+
       case 'chatMessage': {
         // Basic shape validation and logging for diagnostics
-        const { from, name, text, level, avatarUrl } = message;
+        const { from, name, text, level, avatarUrl, id, replyToId, replyToName, replySnippet } = message;
         if (typeof from !== 'string' || typeof text !== 'string') {
           console.warn('chatMessage dropped: bad payload', message);
           break;
         }
+        const ts = Date.now();
         console.log(`chatMessage <- from=${from} name=${name || ''} text="${text}"`);
+
+        // Store to history
+        chatHistory.push({ id, from, name, text, level, avatarUrl, timestamp: ts, replyToId, replyToName, replySnippet });
+        if (chatHistory.length > CHAT_HISTORY_LIMIT) chatHistory.splice(0, chatHistory.length - CHAT_HISTORY_LIMIT);
+        // persist to disk
+        try { saveDb(); } catch {}
+
         // Broadcast to everyone else (not echoing sender)
         wss.clients.forEach(function each(client) {
           if (client !== ws && client.readyState === ws.OPEN) {
@@ -392,9 +495,33 @@ wss.on('connection', function connection(ws) {
               text,
               level,
               avatarUrl,
+              id,
+              replyToId,
+              replyToName,
+              replySnippet,
+              timestamp: ts,
             }));
           }
         });
+        break;
+      }
+
+      case 'getRecentMessages': {
+        // Optional params: limit (<= CHAT_HISTORY_LIMIT), afterId (exclusive)
+        try {
+          const { limit, afterId, reqId } = message;
+          let items = chatHistory;
+          if (afterId) {
+            const idx = chatHistory.findIndex(m => m.id === afterId);
+            if (idx >= 0) items = chatHistory.slice(idx + 1);
+          }
+          const lim = Math.max(1, Math.min(Number(limit) || 100, CHAT_HISTORY_LIMIT));
+          const slice = items.slice(-lim);
+          ws.send(JSON.stringify({ type: 'recentMessages', messages: slice, reqId }));
+        } catch (e) {
+          console.error('getRecentMessages failed', e);
+          try { ws.send(JSON.stringify({ type: 'recentMessages', messages: [], reqId: message.reqId })); } catch {}
+        }
         break;
       }
 
@@ -495,29 +622,7 @@ wss.on('connection', function connection(ws) {
                 break;
             }
 
-            case 'chatMessage': {
-                // Basic shape validation and logging for diagnostics
-                const { from, name, text, level, avatarUrl } = message;
-                if (typeof from !== 'string' || typeof text !== 'string') {
-                    console.warn('chatMessage dropped: bad payload', message);
-                    break;
-                }
-                console.log(`chatMessage <- from=${from} name=${name || ''} text="${text}"`);
-                // Broadcast to everyone else (not echoing sender)
-                wss.clients.forEach(function each(client) {
-                    if (client !== ws && client.readyState === ws.OPEN) {
-                        client.send(JSON.stringify({
-                            type: 'chatMessage',
-                            from,
-                            name,
-                            text,
-                            level,
-                            avatarUrl,
-                        }));
-                    }
-                });
-                break;
-            }
+            // removed legacy duplicate chatMessage case
 
             default:
                 console.log('Received unknown message type:', message.type);
@@ -528,8 +633,12 @@ wss.on('connection', function connection(ws) {
         const clientId = clients.get(ws);
         console.log(`Client ${clientId} disconnected`);
         
-        // Remove lobbies created by the disconnected client
-        lobbies = lobbies.filter(lobby => lobby.createdBy !== clientId);
+        // Remove lobbies created by the disconnected client ONLY if not an unclaimed finished game
+        lobbies = lobbies.filter(lobby => {
+          if (lobby.createdBy !== clientId) return true;
+          if (lobby.status === 'finished' && lobby.winner && lobby.winningsClaimed !== true) return true; // keep it
+          return false; // remove if open or claimed finished
+        });
         
         // cleanup session mapping
         // @ts-ignore

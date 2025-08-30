@@ -200,6 +200,9 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
       });
       toast({ title: 'Claim submitted', description: `Tx: ${signature.slice(0, 8)}…` });
       setClaimed(true);
+      try { localStorage.removeItem('pvp_claim_required'); } catch {}
+      // Inform server to mark claimed so lobby can be cleaned up safely
+      try { if (effSettings?.lobbyId) sendMessage({ type: 'claimWinnings', lobbyId: effSettings.lobbyId }); } catch {}
     } catch (e: any) {
       const msg = e?.message || String(e || '');
       const alreadyClaimed = /AccountNotInitialized|already\s*resolved|already\s*claimed|expected\s*this\s*account\s*to\s*be\s*already\s*initialized/i.test(msg);
@@ -208,10 +211,14 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
         // Treat as benign: likely a duplicate attempt after success
         setClaimed(true);
         toast({ title: 'Already claimed', description: 'Your winnings were already claimed.', variant: 'default' });
+        try { localStorage.removeItem('pvp_claim_required'); } catch {}
+        try { if (effSettings?.lobbyId) sendMessage({ type: 'claimWinnings', lobbyId: effSettings.lobbyId }); } catch {}
       } else if (invalidParam) {
         // Some wallets/RPCs surface vague invalid param/argument even after success; treat as benign
         setClaimed(true);
         toast({ title: 'Claim processed', description: 'Your claim appears processed. If balance updated, you can ignore this message.', variant: 'default' });
+        try { localStorage.removeItem('pvp_claim_required'); } catch {}
+        try { if (effSettings?.lobbyId) sendMessage({ type: 'claimWinnings', lobbyId: effSettings.lobbyId }); } catch {}
       } else {
         toast({ title: 'Claim failed', description: msg, variant: 'destructive' });
       }
@@ -230,10 +237,40 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
     try {
       if (isPvp && effSettings?.lobbyId && state.gameOver && !sentGameOverRef.current) {
         sentGameOverRef.current = true;
-        sendMessage({ type: 'gameOver', lobbyId: effSettings.lobbyId });
+        // Map local winner to server role perspective
+        let winnerSide: 'creator' | 'joiner' | undefined;
+        if (state.winner && effSettings?.myRole) {
+          if (state.winner === 'player') winnerSide = effSettings.myRole;
+          else if (state.winner === 'opponent') winnerSide = effSettings.myRole === 'creator' ? 'joiner' : 'creator';
+        }
+        sendMessage({ type: 'gameOver', lobbyId: effSettings.lobbyId, winner: winnerSide });
       }
     } catch {}
   }, [isPvp, effSettings?.lobbyId, state.gameOver, sendMessage]);
+
+  // Maintain claim-required flag in localStorage for global nav guard
+  useEffect(() => {
+    try {
+      if (isPvp && state.gameOver && state.winner === 'player' && !claimed) {
+        const lobbyId = effSettings?.lobbyId || 'unknown';
+        localStorage.setItem('pvp_claim_required', JSON.stringify({ lobbyId, ts: Date.now() }));
+      } else {
+        localStorage.removeItem('pvp_claim_required');
+      }
+    } catch {}
+  }, [isPvp, state.gameOver, state.winner, claimed, effSettings?.lobbyId]);
+
+  // Prevent accidental tab close/refresh while claim required
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isPvp && state.gameOver && state.winner === 'player' && !claimed) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isPvp, state.gameOver, state.winner, claimed]);
 
   useEffect(() => {
     // Prevent re-initialization mid-game if state has already progressed
@@ -562,8 +599,14 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   };
 
   const handleBack = () => {
+    // If winner in PvP, force claim before leaving
+    if (isPvp && state.gameOver && state.winner === 'player' && !claimed) {
+      toast({ title: 'Claim required', description: 'Please claim your winnings before returning to the lobby.', variant: 'destructive' });
+      return;
+    }
     // Clear localStorage when going back to prevent restoration
     try { localStorage.removeItem(LS_PVP_KEY); } catch {}
+    try { localStorage.removeItem('pvp_claim_required'); } catch {}
     onBack();
   };
 
@@ -630,11 +673,18 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSpectator, effSettings?.lobbyId]);
 
-  // Notify server when PvP game ends
+  // Notify server when PvP game ends (redundant safety)
   useEffect(() => {
     if (!isPvp || !effSettings?.lobbyId) return;
     if (!state.gameOver) return;
-    try { sendMessage({ type: 'gameOver', lobbyId: effSettings.lobbyId }); } catch {}
+    try {
+      let winnerSide: 'creator' | 'joiner' | undefined;
+      if (state.winner && effSettings?.myRole) {
+        if (state.winner === 'player') winnerSide = effSettings.myRole;
+        else if (state.winner === 'opponent') winnerSide = effSettings.myRole === 'creator' ? 'joiner' : 'creator';
+      }
+      sendMessage({ type: 'gameOver', lobbyId: effSettings.lobbyId, winner: winnerSide });
+    } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPvp, effSettings?.lobbyId, state.gameOver]);
 
@@ -642,7 +692,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <Button variant="outline" onClick={handleBack}>← Back</Button>
+          <Button variant="outline" onClick={handleBack} disabled={isPvp && state.gameOver && state.winner === 'player' && !claimed}>← Back</Button>
           <h1 className="text-2xl font-bold">1v1 Mines</h1>
           <Badge variant="outline"><Bomb className="w-3 h-3 mr-1" />{state.bombCount} Bombs</Badge>
           <Badge variant="outline"><DollarSign className="w-3 h-3 mr-1" />{(state.betAmount * 2).toFixed(2)} SOL Pot</Badge>
@@ -694,7 +744,10 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
               </div>
             </div>
             {(state.gameOver || coinflip.show || spectateOver) && (
-                <Dialog open={state.gameOver || coinflip.show || spectateOver} onOpenChange={() => coinflip.show ? null : onBack()}>
+                <Dialog open={state.gameOver || coinflip.show || spectateOver} onOpenChange={() => {
+                  if (coinflip.show) return;
+                  handleBack();
+                }}>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>{coinflip.show ? 'Tie Breaker!' : 'Game Over!'}</DialogTitle>
@@ -702,7 +755,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
                         <Coinflip 
                           winner={coinflip.winner} 
                           onAnimationComplete={handleCoinflipComplete} 
-                          onLobbyReturn={onBack}
+                          onLobbyReturn={handleBack}
                         /> 
                       ) : (
                         <DialogDescription>
@@ -719,7 +772,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
                             {claiming ? 'Claiming…' : claimed ? 'Claimed' : 'Claim Winnings'}
                           </Button>
                         )}
-                        <Button onClick={handleBack} className="w-full" variant="outline">Back to Lobby</Button>
+                        <Button onClick={handleBack} className="w-full" variant="outline" disabled={isPvp && state.gameOver && state.winner === 'player' && !claimed}>Back to Lobby</Button>
                       </div>
                     )}
                   </DialogContent>
