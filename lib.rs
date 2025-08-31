@@ -7,7 +7,7 @@ pub mod solbombs {
     use super::*;
 
     // Creates a PDA game account and transfers the user's wager into the treasury PDA.
-    pub fn start_solo(ctx: Context<StartSolo>, game_nonce: u8, wager_lamports: u64, bombs: u8) -> Result<()> {
+    pub fn start_solo(ctx: Context<StartSolo>, game_nonce: u32, wager_lamports: u64, bombs: u8) -> Result<()> {
         require!(wager_lamports >= MIN_WAGER_LAMPORTS, SolbombsError::WagerTooSmall);
         require!(bombs >= 1 && bombs <= 24, SolbombsError::InvalidBombCount);
 
@@ -388,7 +388,7 @@ pub struct ConvertPvpToRobot<'info> {
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
-#[instruction(game_nonce: u8)]
+#[instruction(game_nonce: u32)]
 pub struct StartSolo<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -397,7 +397,7 @@ pub struct StartSolo<'info> {
         init,
         payer = payer,
         space = 8 + GameState::SIZE,
-        seeds = [b"solo", payer.key().as_ref(), &[game_nonce]],
+        seeds = [b"solo", payer.key().as_ref(), &game_nonce.to_le_bytes()],
         bump
     )]
     pub game: Account<'info, GameState>,
@@ -420,7 +420,7 @@ pub struct RevealSafe<'info> {
 
     #[account(
         mut,
-        seeds = [b"solo", payer.key().as_ref(), &[game.game_nonce]],
+        seeds = [b"solo", payer.key().as_ref(), &game.game_nonce.to_le_bytes()],
         bump = game.bump,
     )]
     pub game: Account<'info, GameState>,
@@ -433,7 +433,7 @@ pub struct CashOut<'info> {
 
     #[account(
         mut,
-        seeds = [b"solo", payer.key().as_ref(), &[game.game_nonce]],
+        seeds = [b"solo", payer.key().as_ref(), &game.game_nonce.to_le_bytes()],
         bump = game.bump,
         close = payer
     )]
@@ -457,7 +457,7 @@ pub struct ResolveLoss<'info> {
 
     #[account(
         mut,
-        seeds = [b"solo", payer.key().as_ref(), &[game.game_nonce]],
+        seeds = [b"solo", payer.key().as_ref(), &game.game_nonce.to_le_bytes()],
         bump = game.bump,
         close = treasury
     )]
@@ -478,7 +478,7 @@ pub struct ResolveLoss<'info> {
 pub struct GameState {
     pub bump: u8,
     pub authority: Pubkey,
-    pub game_nonce: u8,
+    pub game_nonce: u32,
     pub wager_lamports: u64,
     pub bombs: u8,
     pub safe_revealed: u8,
@@ -486,7 +486,7 @@ pub struct GameState {
 }
 
 impl GameState {
-    pub const SIZE: usize = 1 + 32 + 1 + 8 + 1 + 1 + 1; // 45 bytes
+    pub const SIZE: usize = 1 + 32 + 4 + 8 + 1 + 1 + 1; // 48 bytes
 }
 
 // =========================

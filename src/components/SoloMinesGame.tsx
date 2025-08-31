@@ -173,6 +173,8 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
     const { toast } = useToast();
     const { price: solUsd } = useSolPrice();
     const { addGame, userProfile, totalGames } = useStats();
+    // Prevent duplicate transaction entries
+    const recordedRef = useRef<boolean>(false);
     const walletCtx = useWallet();
     const { connected, publicKey } = walletCtx;
     const { play } = useSound();
@@ -294,11 +296,13 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
 
     useEffect(() => {
         if (prevGameState.current === 'playing' && gameState === 'finished') {
+            console.log('🎯 SOLO GAME FINISHED - Recording transaction');
             const isLoss = tiles.some(tile => tile.isBomb && tile.isRevealed);
             const clientSeed = userProfile?.clientSeed || 'not_available';
             const nonce = gameNonce ?? (totalGames + 1);
 
             if (isLoss) {
+                console.log('📉 Recording LOSS:', { betAmount, serverSeed, clientSeed, nonce });
                 addGame({
                     netProfit: -betAmount,
                     wageredAmount: betAmount,
@@ -306,13 +310,16 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
                     gameMode: 'solo',
                     serverSeed, clientSeed, nonce,
                 });
+                recordedRef.current = true;
             } else {
                 const winAmount = betAmount * currentMultiplier;
                 const netProfit = winAmount - betAmount;
+                console.log('🎉 Recording WIN:', { betAmount, currentMultiplier, winAmount, netProfit, serverSeed, clientSeed, nonce });
                 addGame({
                     netProfit, wageredAmount: betAmount, multiplier: currentMultiplier,
                     gameMode: 'solo', serverSeed, clientSeed, nonce,
                 });
+                recordedRef.current = true;
             }
         }
         prevGameState.current = gameState;
@@ -342,6 +349,7 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
             setGameNonce(res.gameNonce);
             const newServerSeed = crypto.lib.WordArray.random(16).toString();
             setServerSeed(newServerSeed);
+            recordedRef.current = false; // new game, allow record
             const clientSeed = userProfile?.clientSeed || 'not_available';
             const bombLocations = generateBombLocations(newServerSeed, clientSeed, res.gameNonce, bombCount);
             const bombPositions = new Set<number>(bombLocations);
@@ -416,8 +424,46 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
                     const payoutLamports = Math.floor((wagerLamports || Math.round(betAmount * 1e9)) * bps / 10_000);
                     const payoutSolExact = payoutLamports / 1e9;
                     await cashOutOnchain({ wallet: walletCtx as any, player: publicKey, gamePda: pdaForAuto, safeRevealedClient: newSafeCount });
+                    
+                    // Record win BEFORE dispatch to ensure it's logged
+                    const clientSeed = userProfile?.clientSeed || 'not_available';
+                    const nonce = (gameNonce ?? (totalGames + 1));
+                    const winAmount = betAmount * (bps / 10_000);
+                    const netProfit = winAmount - betAmount;
+                    console.log('🚀 AUTO-CLAIM - Recording WIN BEFORE dispatch:', { betAmount, multiplier: bps / 10_000, winAmount, netProfit, serverSeed, clientSeed, nonce });
+                    addGame({
+                        netProfit,
+                        wageredAmount: betAmount,
+                        multiplier: bps / 10_000,
+                        gameMode: 'solo',
+                        serverSeed,
+                        clientSeed,
+                        nonce,
+                    });
+                    recordedRef.current = true;
+                    
                     dispatch({ type: 'CASH_OUT' });
                     toast({ title: 'Winnings claimed! 💎', description: `Received ${formatSol3(payoutSolExact)} SOL in your wallet.` });
+                    // Fallback record in case transition effect was missed
+                    if (!recordedRef.current) {
+                        const clientSeed = userProfile?.clientSeed || 'not_available';
+                        const nonce = (gameNonce ?? (totalGames + 1));
+                        const winAmount = betAmount * (bps / 10_000);
+                        const netProfit = winAmount - betAmount;
+                        console.log('🚀 AUTO-CLAIM FALLBACK - Recording WIN:', { betAmount, multiplier: bps / 10_000, winAmount, netProfit, serverSeed, clientSeed, nonce });
+                        addGame({
+                            netProfit,
+                            wageredAmount: betAmount,
+                            multiplier: bps / 10_000,
+                            gameMode: 'solo',
+                            serverSeed,
+                            clientSeed,
+                            nonce,
+                        });
+                        recordedRef.current = true;
+                    } else {
+                        console.log('✅ AUTO-CLAIM - Transaction already recorded via state transition');
+                    }
                     setGamePda(null);
                 } catch (e: any) {
                     console.error('auto-claim failed', e);
@@ -472,6 +518,22 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
             await cashOutOnchain({ wallet: walletCtx as any, player: publicKey, gamePda: pdaForClaim, safeRevealedClient: safeRevealed });
             dispatch({ type: 'CASH_OUT' });
             toast({ title: 'Winnings claimed! 💎', description: `Received ${payoutSolExact.toFixed(3)} SOL in your wallet.` });
+            if (!recordedRef.current) {
+                const clientSeed = userProfile?.clientSeed || 'not_available';
+                const nonce = gameNonce ?? (totalGames + 1);
+                const winAmount = betAmount * (bps / 10_000);
+                const netProfit = winAmount - betAmount;
+                addGame({
+                    netProfit,
+                    wageredAmount: betAmount,
+                    multiplier: bps / 10_000,
+                    gameMode: 'solo',
+                    serverSeed,
+                    clientSeed,
+                    nonce,
+                });
+                recordedRef.current = true;
+            }
             setGamePda(null);
         } catch (e: any) {
             console.error('claim failed', e);
@@ -486,6 +548,7 @@ export default function SoloMinesGame({ onBack }: { onBack?: () => void }) {
         setGamePda(null);
         setGameNonce(null);
         setServerSeed('');
+        recordedRef.current = false;
         try { localStorage.removeItem(LS_SOLO_KEY); } catch {}
     };
 

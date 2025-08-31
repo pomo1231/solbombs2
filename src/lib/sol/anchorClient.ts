@@ -481,43 +481,86 @@ export async function startSoloOnchain(params: {
     program.programId
   );
   
-  // Fast pre-scan: try up to 8 random nonces to avoid PDA collision (very quick RPC, no popup)
-  let gameNonce = Math.floor(Math.random() * 256);
-  let gamePda = web3.PublicKey.findProgramAddressSync(
-    [Buffer.from('solo'), playerPk.toBuffer(), Buffer.from([gameNonce])],
-    program.programId
-  )[0];
-  for (let i = 0; i < 8; i++) {
-    const info = await program.provider.connection.getAccountInfo(gamePda);
-    if (!info) break;
-    gameNonce = Math.floor(Math.random() * 256);
-    gamePda = web3.PublicKey.findProgramAddressSync(
-      [Buffer.from('solo'), playerPk.toBuffer(), Buffer.from([gameNonce])],
+  // Optimized PDA selection with batch checking and smart fallbacks (u32 nonce)
+  function u32ToLeBytes(n: number): Buffer {
+    const buf = Buffer.alloc(4);
+    buf.writeUInt32LE(n >>> 0, 0);
+    return buf;
+  }
+
+  async function findFreeSoloPda(): Promise<{ nonce: number; pda: PublicKey }> {
+    const tried = new Set<number>();
+    const UINT32_MAX = 0xffffffff;
+    // Do up to 4 rounds of batch checks with 16 candidates each (64 total)
+    for (let round = 0; round < 4; round++) {
+      const candidates: Array<{ nonce: number; pda: PublicKey }> = [];
+      for (let i = 0; i < 16; i++) {
+        // random u32
+        let nonce = Math.floor(Math.random() * (UINT32_MAX + 1));
+        // slight player-based skew to spread contention
+        if (round === 0) {
+          const playerHash = playerPk.toBuffer().reduce((acc, b) => (acc + b) >>> 0, 0) >>> 0;
+          nonce = (nonce + playerHash) >>> 0;
+        }
+        while (tried.has(nonce)) nonce = (nonce + 0x9e3779b9) >>> 0; // jump using golden ratio prime
+        tried.add(nonce);
+        const pda = web3.PublicKey.findProgramAddressSync(
+          [Buffer.from('solo'), playerPk.toBuffer(), u32ToLeBytes(nonce)],
+          program.programId
+        )[0];
+        candidates.push({ nonce, pda });
+      }
+      const infos = await program.provider.connection.getMultipleAccountsInfo(candidates.map(c => c.pda));
+      for (let i = 0; i < infos.length; i++) {
+        if (!infos[i]) {
+          return candidates[i];
+        }
+      }
+    }
+    // If still none, pick a new random and let tx retry logic handle rare races
+    let nonce = Math.floor(Math.random() * (UINT32_MAX + 1));
+    while (tried.has(nonce)) nonce = (nonce + 1) >>> 0;
+    const pda = web3.PublicKey.findProgramAddressSync(
+      [Buffer.from('solo'), playerPk.toBuffer(), u32ToLeBytes(nonce)],
       program.programId
     )[0];
+    return { nonce, pda };
   }
+  let { nonce: gameNonce, pda: gamePda } = await findFreeSoloPda();
   console.log(`[startSolo] Selected nonce=${gameNonce}, gamePda=${gamePda.toBase58()}`);
 
   try {
-    const tx = await program.methods
-      .startSolo(gameNonce, new anchor.BN(params.betLamports), params.bombs)
-      .accounts({
-        payer: playerPk,
-        game: gamePda,
-        treasury: treasuryPda,
-        systemProgram: web3.SystemProgram.programId,
-      })
-      .transaction();
-
-    tx.feePayer = playerPk;
-    tx.recentBlockhash = (await program.provider.connection.getLatestBlockhash()).blockhash;
-    
-    const signedTx = await program.provider.wallet.signTransaction(tx);
-    const signature = await program.provider.connection.sendRawTransaction(signedTx.serialize());
-    await program.provider.connection.confirmTransaction(signature, 'confirmed');
-
-    console.log(`[startSolo] SUCCESS! Signature: ${signature}`);
-    return { gamePda, signature, gameNonce };
+    // Simple approach: just send with the free PDA we found
+    // Skip complex simulation to avoid "Invalid arguments" errors
+    const maxSends = 3;
+    for (let sendAttempt = 1; sendAttempt <= maxSends; sendAttempt++) {
+      try {
+        const signature = await program.methods
+          .startSolo(gameNonce, new anchor.BN(params.betLamports), params.bombs)
+          .accounts({
+            payer: playerPk,
+            game: gamePda,
+            treasury: treasuryPda,
+            systemProgram: web3.SystemProgram.programId,
+          })
+          .rpc({ skipPreflight: false, commitment: 'confirmed' });
+        console.log(`[startSolo] SUCCESS! Signature: ${signature}`);
+        return { gamePda, signature, gameNonce };
+      } catch (e: any) {
+        // If this is a collision, select a new PDA and try again silently
+        let logs: string[] | undefined = undefined;
+        try { logs = typeof e?.getLogs === 'function' ? await e.getLogs() : (e?.logs || undefined); } catch {}
+        const inUse = logs?.some(l => /already in use/i.test(l)) ?? false;
+        if (inUse && sendAttempt < maxSends) {
+          console.debug(`[startSolo] Collision on send attempt #${sendAttempt}, reselecting PDA`);
+          const found = await findFreeSoloPda();
+          gameNonce = found.nonce;
+          gamePda = found.pda;
+          continue;
+        }
+        throw e;
+      }
+    }
 
   } catch (error: any) {
     // Extract logs for diagnostics
@@ -527,41 +570,32 @@ export async function startSoloOnchain(params: {
     } catch {}
     const logsStr = logs ? ` Logs: ${JSON.stringify(logs)}` : '';
 
-    // If collision detected, retry once with a fresh nonce
+    // If collision detected, retry a few times using rpc only (no simulate)
     const alreadyInUse = logs?.some(l => /already in use/i.test(l)) ?? false;
     if (alreadyInUse) {
-      console.warn('[startSolo] PDA collision detected. Retrying with a new nonce...');
-      // pick a new nonce quickly
-      let retryNonce = Math.floor(Math.random() * 256);
-      let retryPda = web3.PublicKey.findProgramAddressSync(
-        [Buffer.from('solo'), playerPk.toBuffer(), Buffer.from([retryNonce])],
-        program.programId
-      )[0];
-      for (let i = 0; i < 8; i++) {
-        const info = await program.provider.connection.getAccountInfo(retryPda);
-        if (!info) break;
-        retryNonce = Math.floor(Math.random() * 256);
-        retryPda = web3.PublicKey.findProgramAddressSync(
-          [Buffer.from('solo'), playerPk.toBuffer(), Buffer.from([retryNonce])],
-          program.programId
-        )[0];
-      }
-      try {
-        const tx2 = await program.methods
-          .startSolo(retryNonce, new anchor.BN(params.betLamports), params.bombs)
-          .accounts({ payer: playerPk, game: retryPda, treasury: treasuryPda, systemProgram: web3.SystemProgram.programId })
-          .transaction();
-        tx2.feePayer = playerPk;
-        tx2.recentBlockhash = (await program.provider.connection.getLatestBlockhash()).blockhash;
-        const signed2 = await program.provider.wallet.signTransaction(tx2);
-        const sig2 = await program.provider.connection.sendRawTransaction(signed2.serialize());
-        console.log(`[startSolo] SUCCESS on retry! Signature: ${sig2}`);
-        return { gamePda: retryPda, signature: sig2, gameNonce: retryNonce };
-      } catch (e2: any) {
-        let logs2: string[] | undefined = undefined;
-        try { logs2 = typeof e2?.getLogs === 'function' ? await e2.getLogs() : (e2?.logs || undefined); } catch {}
-        console.error('[startSolo] Retry failed:', e2, logs2 ? `Logs: ${JSON.stringify(logs2)}` : '');
-        throw new Error(`Game creation failed after retry: ${e2.message || e2}.${logs2 ? ' Logs: ' + JSON.stringify(logs2) : ''}`);
+      console.debug('[startSolo] PDA collision detected post-send. Retrying with fresh nonce(s)...');
+      const maxRetries = 3;
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        const { nonce: retryNonce, pda: retryPda } = await findFreeSoloPda();
+        try {
+          const sig2 = await program.methods
+            .startSolo(retryNonce, new anchor.BN(params.betLamports), params.bombs)
+            .accounts({ payer: playerPk, game: retryPda, treasury: treasuryPda, systemProgram: web3.SystemProgram.programId })
+            .rpc({ skipPreflight: false, commitment: 'confirmed' });
+          console.log(`[startSolo] SUCCESS on retry #${attempt}! Signature: ${sig2}`);
+          return { gamePda: retryPda, signature: sig2, gameNonce: retryNonce };
+        } catch (e2: any) {
+          let logs2: string[] | undefined = undefined;
+          try { logs2 = typeof e2?.getLogs === 'function' ? await e2.getLogs() : (e2?.logs || undefined); } catch {}
+          const inUseAgain = logs2?.some(l => /already in use/i.test(l)) ?? false;
+          if (!inUseAgain && attempt === maxRetries) {
+            // Different error; surface it
+            throw new Error(`Game creation failed: ${e2?.message || String(e2)}${logs2 ? ' Logs: ' + JSON.stringify(logs2) : ''}`);
+          }
+          if (attempt === maxRetries) {
+            throw new Error('Game creation failed after retries due to PDA contention. Please try again.');
+          }
+        }
       }
     }
 

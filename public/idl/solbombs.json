@@ -29,7 +29,7 @@
       "args": [
         {
           "name": "gameNonce",
-          "type": "u8"
+          "type": "u32"
         },
         {
           "name": "wagerLamports",
@@ -40,32 +40,6 @@
           "type": "u8"
         }
       ]
-    },
-    {
-      "name": "convertPvpToRobot",
-      "accounts": [
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "pvpGame",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "treasury",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
     },
     {
       "name": "revealSafe",
@@ -136,15 +110,15 @@
       "args": []
     },
     {
-      "name": "startPvp",
+      "name": "createMatch",
       "accounts": [
         {
-          "name": "creator",
+          "name": "player1",
           "isMut": true,
           "isSigner": true
         },
         {
-          "name": "pvpGame",
+          "name": "matchState",
           "isMut": true,
           "isSigner": false
         },
@@ -161,7 +135,7 @@
       ],
       "args": [
         {
-          "name": "gameNonce",
+          "name": "matchNonce",
           "type": "u8"
         },
         {
@@ -169,21 +143,21 @@
           "type": "u64"
         },
         {
-          "name": "vsRobot",
-          "type": "bool"
+          "name": "bombs",
+          "type": "u8"
         }
       ]
     },
     {
-      "name": "joinPvp",
+      "name": "joinMatch",
       "accounts": [
         {
-          "name": "joiner",
+          "name": "player2",
           "isMut": true,
           "isSigner": true
         },
         {
-          "name": "pvpGame",
+          "name": "matchState",
           "isMut": true,
           "isSigner": false
         },
@@ -201,33 +175,41 @@
       "args": []
     },
     {
-      "name": "resolvePvp",
+      "name": "play",
       "accounts": [
         {
-          "name": "payer",
+          "name": "player",
           "isMut": true,
           "isSigner": true
         },
         {
-          "name": "pvpGame",
+          "name": "matchState",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "cellIndex",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "resolvePayout",
+      "accounts": [
+        {
+          "name": "winner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "matchState",
           "isMut": true,
           "isSigner": false
         },
         {
           "name": "treasury",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "creatorAccount",
-          "isMut": true,
-          "isSigner": false,
-          "docs": [
-            "Recipient accounts"
-          ]
-        },
-        {
-          "name": "joinerAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -237,23 +219,18 @@
           "isSigner": false
         }
       ],
-      "args": [
-        {
-          "name": "winnerSide",
-          "type": "u8"
-        }
-      ]
+      "args": []
     },
     {
-      "name": "cancelPvp",
+      "name": "cancelIfUnjoined",
       "accounts": [
         {
-          "name": "payer",
+          "name": "player1",
           "isMut": true,
           "isSigner": true
         },
         {
-          "name": "pvpGame",
+          "name": "matchState",
           "isMut": true,
           "isSigner": false
         },
@@ -261,14 +238,6 @@
           "name": "treasury",
           "isMut": true,
           "isSigner": false
-        },
-        {
-          "name": "creatorAccount",
-          "isMut": true,
-          "isSigner": false,
-          "docs": [
-            "Creator to receive refund"
-          ]
         },
         {
           "name": "systemProgram",
@@ -295,7 +264,7 @@
           },
           {
             "name": "gameNonce",
-            "type": "u8"
+            "type": "u32"
           },
           {
             "name": "wagerLamports",
@@ -317,7 +286,7 @@
       }
     },
     {
-      "name": "PvpGameState",
+      "name": "MatchState",
       "type": {
         "kind": "struct",
         "fields": [
@@ -326,19 +295,19 @@
             "type": "u8"
           },
           {
-            "name": "creator",
+            "name": "authority",
             "type": "publicKey"
           },
           {
-            "name": "joiner",
+            "name": "player1",
             "type": "publicKey"
           },
           {
-            "name": "hasJoiner",
-            "type": "bool"
+            "name": "player2",
+            "type": "publicKey"
           },
           {
-            "name": "gameNonce",
+            "name": "matchNonce",
             "type": "u8"
           },
           {
@@ -346,12 +315,36 @@
             "type": "u64"
           },
           {
-            "name": "vsRobot",
-            "type": "bool"
+            "name": "bombs",
+            "type": "u8"
           },
           {
-            "name": "resolved",
-            "type": "bool"
+            "name": "revealedMask",
+            "type": "u32"
+          },
+          {
+            "name": "safeRevealed",
+            "type": "u8"
+          },
+          {
+            "name": "turn",
+            "type": "u8"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "winner",
+            "type": "publicKey"
+          },
+          {
+            "name": "createdAtSlot",
+            "type": "u64"
+          },
+          {
+            "name": "joinedAtSlot",
+            "type": "u64"
           }
         ]
       }
@@ -405,26 +398,43 @@
     },
     {
       "code": 6009,
-      "name": "AlreadyHasJoiner",
-      "msg": "Game already has a joiner."
+      "name": "MatchNotOpen",
+      "msg": "Match is not open."
     },
     {
       "code": 6010,
-      "name": "HumanJoinNotAllowedForRobot",
-      "msg": "Cannot join a robot game as human."
+      "name": "MatchNotActive",
+      "msg": "Match is not active."
     },
     {
       "code": 6011,
-      "name": "NoJoiner",
-      "msg": "No joiner present."
+      "name": "AlreadyJoined",
+      "msg": "Match already joined."
     },
     {
       "code": 6012,
-      "name": "InvalidWinner",
-      "msg": "Invalid winner."
+      "name": "NotYourTurn",
+      "msg": "Not your turn."
+    },
+    {
+      "code": 6013,
+      "name": "InvalidCell",
+      "msg": "Invalid cell index."
+    },
+    {
+      "code": 6014,
+      "name": "CellAlreadyRevealed",
+      "msg": "Cell already revealed."
+    },
+    {
+      "code": 6015,
+      "name": "MatchNotResolved",
+      "msg": "Match not resolved."
+    },
+    {
+      "code": 6016,
+      "name": "BadWinner",
+      "msg": "Winner account mismatch."
     }
-  ],
-  "metadata": {
-    "address": "7TMfKWSr4RFSPLvFzcWvsqBeEUXM8yu76dxaj2qY1EXy"
-  }
+  ]
 }

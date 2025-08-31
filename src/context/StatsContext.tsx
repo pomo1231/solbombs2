@@ -240,7 +240,12 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       id: `game_${Date.now()}`,
       timestamp: new Date().toISOString(),
     };
-    setGameHistory((prev) => [newGame, ...prev]);
+    console.log('📊 StatsContext.addGame called:', newGame);
+    setGameHistory((prev) => {
+      const updated = [newGame, ...prev];
+      console.log('📊 Updated gameHistory length:', updated.length, 'Latest entry:', updated[0]);
+      return updated;
+    });
     addWageredAmount(gameData.wageredAmount);
   };
 

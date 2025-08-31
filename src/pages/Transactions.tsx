@@ -13,6 +13,10 @@ import {
   const TransactionsPage = () => {
     const { gameHistory } = useStats();
   
+    console.log('📋 Transactions page - gameHistory:', gameHistory);
+  console.log('📋 Recent 5 entries:', gameHistory.slice(0, 5));
+  console.log('📋 Solo wins in recent 20:', gameHistory.slice(0, 20).filter(g => g.gameMode === 'solo' && g.netProfit > 0));
+
     return (
       <div className="container mx-auto py-8">
         <Card>
