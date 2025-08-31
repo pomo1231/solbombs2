@@ -14,6 +14,8 @@ interface SoundContextValue {
   setEnabled: (v: boolean) => void;
   setVolume: (v: number) => void;
   play: (name: keyof typeof SOUND_URLS | string) => void;
+  // Global, non-persistent mute useful for replay/hydration phases
+  setGlobalMute: (muted: boolean) => void;
 }
 
 const SoundContext = createContext<SoundContextValue | null>(null);
@@ -28,6 +30,8 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [volume, setVolume] = useState<number>(() => {
     try { const v = localStorage.getItem(LS_VOLUME); return v ? Math.max(0, Math.min(1, Number(v))) : 0.4; } catch { return 0.4; }
   });
+  // Non-persistent global mute to silence all SFX during hydration/replay
+  const globalMuteRef = useRef(false);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const unlockedRef = useRef(false);
@@ -78,7 +82,10 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [volume]);
 
   const play = useCallback((name: keyof typeof SOUND_URLS | string) => {
-    if (!enabled) return;
+    if (!enabled || globalMuteRef.current) {
+      try { if (globalMuteRef.current) console.debug('[Sound] suppressed by global mute:', name); } catch {}
+      return;
+    }
     const key = (name as string);
     // Always synthesize a softer bomb to avoid harshness
     if (key === 'bomb') {
@@ -94,7 +101,15 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     synthDiamond(volume);
   }, [enabled, playUrl, volume]);
 
-  const value = useMemo<SoundContextValue>(() => ({ enabled, volume, setEnabled, setVolume, play, unlockAudio }), [enabled, play, volume]);
+  const setGlobalMute = useCallback((muted: boolean) => {
+    globalMuteRef.current = muted;
+    try { console.debug('[Sound] global mute ->', muted); } catch {}
+  }, []);
+
+  const value = useMemo<SoundContextValue>(
+    () => ({ enabled, volume, setEnabled, setVolume, play, unlockAudio, setGlobalMute }),
+    [enabled, play, volume, unlockAudio]
+  );
 
   // Auto-attach a one-time unlock listener
   useEffect(() => {

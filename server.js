@@ -390,10 +390,8 @@ wss.on('connection', function connection(ws) {
         const { lobbyId, tileId } = message;
         const lobby = lobbies.find(l => l.id === lobbyId);
         if (!lobby || lobby.status !== 'started') break;
-        // Determine side and record
         const senderId = clients.get(ws);
         let by = (senderId === lobby.createdBy) ? 'creator' : 'joiner';
-        // For robot games, allow explicit 'by' override so the creator client can emit bot moves as joiner
         if (lobby.vsRobotActive && (message.by === 'creator' || message.by === 'joiner')) {
           by = message.by;
         }
@@ -409,15 +407,17 @@ wss.on('connection', function connection(ws) {
             }
           }
         }
-        // Also forward to spectators
-        if (Array.isArray(lobby.spectators) && lobby.spectators.length) {
-          for (const client of wss.clients) {
-            const cid = clients.get(client);
-            if (lobby.spectators.includes(cid) && client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify({ type: 'pvpMove', lobbyId, tileId, by }));
-            }
-          }
-          try { console.log(`[pvpMove] broadcasted to spectators for lobby=${lobby.id}`); } catch {}
+        // Also forward to spectators with de-duplication across tracking methods
+        const spectatorTargets = new Set();
+        for (const client of wss.clients) {
+          if (client.readyState !== WebSocket.OPEN) continue;
+          const cid = clients.get(client);
+          const listed = Array.isArray(lobby.spectators) && lobby.spectators.includes(cid);
+          const flagged = client.spectatingLobbyId === lobbyId;
+          if (listed || flagged) spectatorTargets.add(client);
+        }
+        for (const client of spectatorTargets) {
+          try { client.send(JSON.stringify({ type: 'pvpMove', lobbyId, tileId, by })); } catch {}
         }
         break;
       }
@@ -437,7 +437,15 @@ wss.on('connection', function connection(ws) {
           try { console.log(`[spectateLobby] added spectator session=${watcherId} totalSpectators=${lobby.spectators.length}`); } catch {}
           // Notify everyone so UI spectator counts update live
           try { broadcast({ type: 'lobbies', lobbies: lobbies.filter(l => l.status !== 'finished') }); } catch {}
+        } else if (watcherId && lobby.spectators.includes(watcherId)) {
+          // Spectator is reconnecting after refresh - they're already in the list but need fresh state
+          try { console.log(`[spectateLobby] reconnecting spectator session=${watcherId}`); } catch {}
         }
+        // Mark this socket as actively spectating for robust forwarding even if clientIds change
+        try {
+          // @ts-ignore
+          ws.spectatingLobbyId = lobby.id;
+        } catch {}
         // Send current state & moves
         const payload = {
           type: 'startSpectate',
@@ -446,8 +454,8 @@ wss.on('connection', function connection(ws) {
           bombCount: lobby.bombCount,
           boardSeed: lobby.boardSeed,
           moves: lobby.moveHistory || [],
-          creatorWallet: lobby.createdByWallet || null,
-          joinerWallet: lobby.joinedByWallet || null,
+          creatorWallet: lobby.creatorWallet || null,
+          joinerWallet: lobby.joinerWallet || null,
           creatorName: lobby.creatorName || null,
           creatorAvatar: lobby.creatorAvatar || null,
           joinerName: lobby.joinerName || null,
@@ -494,9 +502,15 @@ wss.on('connection', function connection(ws) {
         }
         const yourRole = isCreator || walletIsCreator ? 'creator' : (isJoiner || walletIsJoiner ? 'joiner' : (lobby.vsRobotActive ? 'creator' : undefined));
         // Rebind participant to this fresh connection so subsequent pvpMove forwards reach the refreshed client
+        // Also clean up stale spectator entries that might reference the old clientId
+        const oldClientId = yourRole === 'creator' ? lobby.createdBy : (yourRole === 'joiner' ? lobby.joinedBy : null);
         if (yourRole === 'creator') {
           if (lobby.createdBy !== cid) {
             try { console.log(`[rehydrateLobby] rebind creator from ${lobby.createdBy} -> ${cid} for lobby=${lobby.id}`); } catch {}
+            // Remove old clientId from spectators if it exists there
+            if (oldClientId && Array.isArray(lobby.spectators)) {
+              lobby.spectators = lobby.spectators.filter(sid => sid !== oldClientId);
+            }
             lobby.createdBy = cid;
           }
           // Persist wallet if provided
@@ -504,6 +518,10 @@ wss.on('connection', function connection(ws) {
         } else if (yourRole === 'joiner') {
           if (lobby.joinedBy !== cid) {
             try { console.log(`[rehydrateLobby] rebind joiner from ${lobby.joinedBy} -> ${cid} for lobby=${lobby.id}`); } catch {}
+            // Remove old clientId from spectators if it exists there
+            if (oldClientId && Array.isArray(lobby.spectators)) {
+              lobby.spectators = lobby.spectators.filter(sid => sid !== oldClientId);
+            }
             lobby.joinedBy = cid;
           }
           if (walletStr) lobby.joinerWallet = walletStr;
@@ -527,6 +545,43 @@ wss.on('connection', function connection(ws) {
         };
         try { console.log(`[rehydrateLobby] -> ${cid} lobby=${lobby.id} wallet=${walletStr || 'n/a'} movesLen=${(lobby.moveHistory || []).length}`); } catch {}
         if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
+        
+        // After player rehydrates, notify all spectators with updated game state (deduplicated)
+        if (Array.isArray(lobby.spectators) && lobby.spectators.length > 0) {
+          const spectatorPayload = {
+            type: 'startSpectate',
+            lobbyId: lobby.id,
+            betAmount: lobby.betAmount,
+            bombCount: lobby.bombCount,
+            boardSeed: lobby.boardSeed,
+            moves: lobby.moveHistory || [],
+            creatorWallet: lobby.creatorWallet || null,
+            joinerWallet: lobby.joinerWallet || null,
+            creatorName: lobby.creatorName || null,
+            creatorAvatar: lobby.creatorAvatar || null,
+            joinerName: lobby.joinerName || null,
+            joinerAvatar: lobby.joinerAvatar || null,
+            vsRobotActive: !!lobby.vsRobotActive,
+            startsBy: lobby.startsBy,
+          };
+          let spectatorNotifyCount = 0;
+          for (const client of wss.clients) {
+            const spectatorId = clients.get(client);
+            if (lobby.spectators.includes(spectatorId) && client.readyState === WebSocket.OPEN) {
+              try { client.send(JSON.stringify(spectatorPayload)); } catch {}
+              spectatorNotifyCount++;
+            }
+          }
+          // Also notify sockets marked as spectating this lobby
+          for (const client of wss.clients) {
+            // @ts-ignore
+            if (client.readyState === WebSocket.OPEN && client.spectatingLobbyId === lobby.id) {
+              try { client.send(JSON.stringify(spectatorPayload)); } catch {}
+              spectatorNotifyCount++;
+            }
+          }
+          try { console.log(`[rehydrateLobby] notified ${spectatorNotifyCount} spectators of updated game state`); } catch {}
+        }
         break;
       }
 
@@ -709,11 +764,13 @@ wss.on('connection', function connection(ws) {
         const clientId = clients.get(ws);
         console.log(`Client ${clientId} disconnected`);
         
-        // Remove lobbies created by the disconnected client ONLY if not an unclaimed finished game
+        // Only remove lobbies that are still 'open' and owned by this client (creator disconnected before game start).
+        // Keep all 'started' and 'finished' lobbies to preserve ongoing games through refreshes.
         lobbies = lobbies.filter(lobby => {
           if (lobby.createdBy !== clientId) return true;
-          if (lobby.status === 'finished' && lobby.winner && lobby.winningsClaimed !== true) return true; // keep it
-          return false; // remove if open or claimed finished
+          if (lobby.status !== 'open') return true; // keep started/finished games
+          // If open and creator disconnected, remove it
+          return false;
         });
         // Remove this client from spectators of all remaining lobbies
         for (const lobby of lobbies) {
@@ -722,6 +779,24 @@ wss.on('connection', function connection(ws) {
             lobby.spectators = lobby.spectators.filter((cid) => cid !== clientId);
             if (lobby.spectators.length !== before) {
               try { console.log(`[disconnect] removed spectator from lobby=${lobby.id} newCount=${lobby.spectators.length}`); } catch {}
+            }
+          }
+        }
+        
+        // Clean up dead spectator references periodically
+        for (const lobby of lobbies) {
+          if (Array.isArray(lobby.spectators) && lobby.spectators.length > 0) {
+            const validSpectators = lobby.spectators.filter(sid => {
+              for (const client of wss.clients) {
+                if (clients.get(client) === sid && client.readyState === WebSocket.OPEN) {
+                  return true;
+                }
+              }
+              return false;
+            });
+            if (validSpectators.length !== lobby.spectators.length) {
+              try { console.log(`[cleanup] removed ${lobby.spectators.length - validSpectators.length} dead spectators from lobby=${lobby.id}`); } catch {}
+              lobby.spectators = validSpectators;
             }
           }
         }
@@ -738,9 +813,32 @@ wss.on('connection', function connection(ws) {
     });
 });
 
+// Clean up dead spectator references from all lobbies
+function cleanupDeadSpectators() {
+  for (const lobby of lobbies) {
+    if (Array.isArray(lobby.spectators) && lobby.spectators.length > 0) {
+      const validSpectators = lobby.spectators.filter(sid => {
+        for (const client of wss.clients) {
+          if (clients.get(client) === sid && client.readyState === WebSocket.OPEN) {
+            return true;
+          }
+        }
+        return false;
+      });
+      if (validSpectators.length !== lobby.spectators.length) {
+        try { console.log(`[cleanup] removed ${lobby.spectators.length - validSpectators.length} dead spectators from lobby=${lobby.id}`); } catch {}
+        lobby.spectators = validSpectators;
+      }
+    }
+  }
+}
+
 // Periodic heartbeat to clean up dead connections
 const HEARTBEAT_MS = 10000;
 const interval = setInterval(() => {
+  // Clean up dead spectators first
+  cleanupDeadSpectators();
+  
   wss.clients.forEach((ws) => {
     // @ts-ignore
     if (ws.isAlive === false) {

@@ -171,7 +171,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   const [spectateOver, setSpectateOver] = useState(false);
   const stats = useStats();
   const wallet = useWallet();
-  const { play } = useSound();
+  const { play, setGlobalMute } = useSound();
   const { lobbies, sendMessage, sendRequest, setPvpMoveHandler, setStartSpectateHandler, setGameOverHandler, setPfFinalSeedHandler, setRehydrateHandler, getProfile, ready: socketReady } = useSocket();
   // Track whether authoritative rehydrate has completed
   const [isRehydrated, setIsRehydrated] = useState(false);
@@ -198,6 +198,17 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   const isPvp = !!(effSettings && effSettings.opponent === 'player' && !effSettings.vsRobot);
   const isSpectator = !!effSettings?.spectate;
   const appliedHydrationRef = useRef(false);
+  // Buffer for spectator live moves that arrive before we finish hydration
+  const spectatorMoveBufferRef = useRef<Array<{ tileId: number; maker: 'player' | 'opponent' }>>([]);
+  // Mute SFX during history replay (rehydrate/startSpectate) so we don't spam sounds
+  const suppressSoundsRef = useRef(false);
+
+  // Hard mute as soon as we're spectating to avoid any early sound leakage before handlers register
+  useEffect(() => {
+    if (!isSpectator) return;
+    try { setGlobalMute(true); } catch {}
+    return () => { try { setGlobalMute(false); } catch {} };
+  }, [isSpectator, setGlobalMute]);
 
   // Live spectator count for this lobby (updates with lobby broadcasts)
   const spectatorsCount = useMemo(() => {
@@ -267,6 +278,9 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
         // Defer replay so the above setState commits (minesPlaced=true, tiles seeded)
         setTimeout(() => {
           try { console.log(`[rehydrate] replaying ${moves.length} moves:`, moves); } catch {}
+          // Suppress SFX during history replay and buffered flush
+          suppressSoundsRef.current = true;
+          try { setGlobalMute(true); } catch {}
           for (const m of moves) {
             const maker = (data.yourRole === 'creator') ? (m.by === 'creator' ? 'player' : 'opponent') : (m.by === 'joiner' ? 'player' : 'opponent');
             try { console.log(`[rehydrate] applying move tileId=${m.tileId} by=${m.by} -> maker=${maker}`); } catch {}
@@ -285,18 +299,25 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
               processMove(pm.tileId, maker as any, true);
             }
           }
+          suppressSoundsRef.current = false;
+          try { setTimeout(() => setGlobalMute(false), 50); } catch {}
           // After replaying, set the correct next turn explicitly based on startsBy and total moves
           const totalMoves = moves.length + bufferedCount;
           const nextBy: 'creator' | 'joiner' | undefined = data.startsBy
             ? ((totalMoves % 2 === 0) ? data.startsBy : (data.startsBy === 'creator' ? 'joiner' : 'creator'))
             : undefined;
           if (nextBy && data.yourRole) {
-            // For vsRobot games, creator is always the human player
+            // For vsRobot games, creator is always the human player, joiner is always the robot
             const nextTurn = data.vsRobotActive 
               ? (nextBy === 'creator' ? 'player' : 'opponent')
               : (nextBy === data.yourRole ? 'player' : 'opponent');
             try { console.log(`[rehydrate] setting activeTurn=${nextTurn} (totalMoves=${totalMoves}, nextBy=${nextBy}, yourRole=${data.yourRole}, vsRobot=${data.vsRobotActive})`); } catch {}
             setState(prev => ({ ...prev, activeTurn: nextTurn }));
+          } else if (data.vsRobotActive && data.yourRole === 'creator') {
+            // Fallback for vsRobot: if we can't determine from moves, preserve current turn or default to player
+            const currentTurn = state.activeTurn;
+            try { console.log(`[rehydrate] vsRobot fallback: preserving activeTurn=${currentTurn} (no startsBy data)`); } catch {}
+            // Don't change activeTurn in this case to preserve player's turn
           }
           setIsRehydrated(true);
           try { console.log(`[rehydrate] complete - handler will now process live moves`); } catch {}
@@ -322,7 +343,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
       if (state.gameOver) return;
       
       // If we haven't rehydrated yet (role/board unknown), buffer the move
-      if (!isSpectator && (isPvp || effSettings?.vsRobot) && !isRehydrated) {
+      if ((isPvp || effSettings?.vsRobot) && !isRehydrated) {
         try { console.log('[pvpMove] buffering move until rehydrate completes'); } catch {}
         pendingMovesRef.current.push({ tileId, by });
         return;
@@ -332,7 +353,14 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
       if (by) {
         if (isSpectator) {
           const maker: 'player' | 'opponent' = by === 'creator' ? 'player' : 'opponent';
-          processMove(tileId, maker, true);
+          if (!isRehydrated) {
+            // Buffer until startSpectate completes
+            spectatorMoveBufferRef.current.push({ tileId, maker });
+            try { console.log(`[pvpMove] buffered (spectator not rehydrated): tileId=${tileId} maker=${maker}`); } catch {}
+          } else {
+            try { console.log(`[pvpMove] applying: tileId=${tileId} by=${by} myRole=${effSettings.myRole} -> maker=${maker}`); } catch {}
+            processMove(tileId, maker, true);
+          }
           return;
         }
         if (effSettings?.myRole) {
@@ -346,7 +374,11 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
       }
       // Fallback: treat as opponent
       try { console.log(`[pvpMove] fallback: treating as opponent move`); } catch {}
-      processMove(tileId, 'opponent', true);
+      if (isSpectator && !isRehydrated) {
+        spectatorMoveBufferRef.current.push({ tileId, maker: 'opponent' });
+      } else {
+        processMove(tileId, 'opponent', true);
+      }
     };
     
     setPvpMoveHandler?.(h);
@@ -379,13 +411,22 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
     }
   }, [isRehydrated, effSettings?.myRole, isSpectator]);
 
-  // On socket ready (or mount), if we're a participant and have lobby context, request rehydrate
+  // On socket ready (or mount), if we're a participant/spectator and have lobby context, request rehydrate
   useEffect(() => {
     try {
       if (!socketReady) return;
       if (!effSettings?.lobbyId) return;
-      if (isSpectator) return;
-      if (!(isPvp || effSettings?.vsRobot)) return;
+      if (!(isPvp || effSettings?.vsRobot || isSpectator)) return;
+      
+      // For spectators, use spectateLobby instead of rehydrateLobby
+      if (isSpectator) {
+        // Mute globally ASAP to prevent any early sound bursts before startSpectate handler engages
+        try { setGlobalMute(true); } catch {}
+        try { console.log(`[spectateLobby] ->`, { type: 'spectateLobby', lobbyId: effSettings.lobbyId, pvpGamePda: effSettings.pvpGamePda }); } catch {}
+        sendMessage({ type: 'spectateLobby', lobbyId: effSettings.lobbyId, pvpGamePda: effSettings.pvpGamePda });
+        return;
+      }
+      
       // Reset rehydration gate before requesting authoritative state
       setIsRehydrated(false);
       // Fallback: if we don't receive rehydrate in time, unblock to avoid deadlock
@@ -397,21 +438,14 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
           }
           return prev;
         });
-      }, 1500);
-      const rehydrateMsg = {
-        type: 'rehydrateLobby',
-        lobbyId: effSettings.lobbyId,
-        pvpGamePda: effSettings.pvpGamePda,
-        gameNonce: (effSettings as any).gameNonce,
-        wallet: wallet?.publicKey ? wallet.publicKey.toBase58() : undefined,
-      };
-      try { console.log('[rehydrateLobby] ->', rehydrateMsg); } catch {}
-      sendMessage(rehydrateMsg);
+      }, 3000);
+      try { console.log(`[rehydrateLobby] ->`, { type: 'rehydrateLobby', lobbyId: effSettings.lobbyId, pvpGamePda: effSettings.pvpGamePda, wallet: wallet?.publicKey?.toBase58?.() }); } catch {}
+      sendMessage({ type: 'rehydrateLobby', lobbyId: effSettings.lobbyId, pvpGamePda: effSettings.pvpGamePda, wallet: wallet?.publicKey?.toBase58?.() });
       return () => {
         clearTimeout(timeoutId);
       };
     } catch {}
-  }, [socketReady, effSettings?.lobbyId, isSpectator, isPvp, effSettings?.vsRobot, wallet?.publicKey]);
+  }, [socketReady, effSettings?.lobbyId, isSpectator, isPvp, effSettings?.vsRobot, wallet?.publicKey, sendMessage]);
 
   // Fetch profiles when lobby context known (refresh/cache fill)
   useEffect(() => {
@@ -685,19 +719,6 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setPfFinalSeedHandler, effSettings?.lobbyId, state.betAmount, state.bombCount]);
 
-  // Hydrate historical moves when spectating (passed from lobby to avoid race with WS handler)
-  useEffect(() => {
-    if (!isSpectator) return;
-    if (appliedHydrationRef.current) return;
-    const moves: Array<{ tileId: number; by: 'creator' | 'joiner' }> = (effSettings as any)?.spectateMoves || [];
-    if (!Array.isArray(moves) || moves.length === 0) return;
-    for (const m of moves) {
-      const maker: 'player' | 'opponent' = m.by === 'creator' ? 'player' : 'opponent';
-      processMove(m.tileId, maker, true);
-    }
-    appliedHydrationRef.current = true;
-  }, [isSpectator, effSettings]);
-
   // Restore persisted 1v1 state on mount/wallet change - only if game was in progress
   useEffect(() => {
     try {
@@ -724,6 +745,27 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
                   }
                   return t;
                 });
+                // For vsRobot games, also preserve the activeTurn, scores, and bomb states to prevent robot from stealing turn and reset counts
+                if (effSettings?.vsRobot && saved?.state) {
+                  if (saved.state.activeTurn) {
+                    next.activeTurn = saved.state.activeTurn;
+                    try { console.log(`1v1 restore (preview) - preserving activeTurn=${saved.state.activeTurn} for vsRobot`); } catch {}
+                  }
+                  if (typeof saved.state.playerScore === 'number') {
+                    next.playerScore = saved.state.playerScore;
+                  }
+                  if (typeof saved.state.opponentScore === 'number') {
+                    next.opponentScore = saved.state.opponentScore;
+                  }
+                  // Preserve bomb hit states to prevent robot from continuing after hitting bomb
+                  if (typeof saved.state.playerHasHitBomb === 'boolean') {
+                    next.playerHasHitBomb = saved.state.playerHasHitBomb;
+                  }
+                  if (typeof saved.state.opponentHasHitBomb === 'boolean') {
+                    next.opponentHasHitBomb = saved.state.opponentHasHitBomb;
+                  }
+                  try { console.log(`1v1 restore (preview) - preserving scores: player=${next.playerScore}, opponent=${next.opponentScore}, bombStates: player=${next.playerHasHitBomb}, opponent=${next.opponentHasHitBomb}`); } catch {}
+                }
                 return next;
               });
             } else {
@@ -819,6 +861,13 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
         if (moveMaker === 'opponent' && (newState.opponentHasHitBomb || newState.activeTurn !== 'opponent')) return newState;
       }
 
+      // Guard: if this tile is already revealed, ignore to avoid double/triple counts
+      if (!Number.isInteger(tileId) || tileId < 0 || tileId >= newState.tiles.length) return newState;
+      if (newState.tiles[tileId]?.isRevealed) {
+        try { console.warn(`[processMove] ignored duplicate on revealed tile`, { tileId, moveMaker }); } catch {}
+        return newState;
+      }
+
       if (!newState.minesPlaced) {
         const minePositions = placeMines(tileId, newState.bombCount, 25, newState.gameSeed);
         newState.tiles.forEach((tile: Tile, index: number) => {
@@ -834,7 +883,9 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
       }
 
       if (tile.isBomb) {
-        try { play('bomb'); } catch {}
+        try {
+          if (!suppressSoundsRef.current && !(isSpectator && !appliedHydrationRef.current)) play('bomb');
+        } catch {}
         if (moveMaker === 'player') {
           newState.playerHasHitBomb = true;
           if (!isSpectator) toast({ title: "💥 You hit a bomb!", description: "You can't make any more moves.", variant: "destructive" });
@@ -843,7 +894,9 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
           if (!isSpectator) toast({ title: isPvp ? 'Opponent hit a bomb!' : 'Bot hit a bomb!', description: "It can't make any more moves." });
         }
       } else {
-        try { play('diamond'); } catch {}
+        try {
+          if (!suppressSoundsRef.current && !(isSpectator && !appliedHydrationRef.current)) play('diamond');
+        } catch {}
         if (moveMaker === 'player') newState.playerScore++;
         else newState.opponentScore++;
       }
@@ -983,34 +1036,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   };
 
   // Receive opponent moves in PvP
-  useEffect(() => {
-    if (!setPvpMoveHandler) return;
-    const handler = ({ lobbyId, tileId, by }: { lobbyId: string; tileId: number; by?: 'creator' | 'joiner' }) => {
-      if (effSettings?.lobbyId !== lobbyId) return;
-      if (state.gameOver) return;
-      // Map server 'by' to local player/opponent
-      if (by) {
-        if (isSpectator) {
-          // Spectator POV: creator => player (green), joiner => opponent (purple)
-          const maker: 'player' | 'opponent' = by === 'creator' ? 'player' : 'opponent';
-          processMove(tileId, maker, true);
-          return;
-        }
-        if (effSettings?.myRole) {
-          const iAmCreator = effSettings.myRole === 'creator';
-          const isByCreator = by === 'creator';
-          const maker: 'player' | 'opponent' = (iAmCreator === isByCreator) ? 'player' : 'opponent';
-          processMove(tileId, maker, true);
-          return;
-        }
-      }
-      // Fallback (should not happen often): treat as opponent
-      processMove(tileId, 'opponent', true);
-    };
-    setPvpMoveHandler(handler);
-    return () => setPvpMoveHandler(undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effSettings?.lobbyId, state.gameOver]);
+  // Note: removed duplicate pvpMove handler registration that caused double-apply.
 
   // Spectator hydration
   useEffect(() => {
@@ -1020,13 +1046,31 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
       if (hydrated) return;
       if (!data || data.type !== 'startSpectate') return;
       if (effSettings?.lobbyId !== data.lobbyId) return;
+      try { console.log(`[startSpectate] spectator rehydrating with ${Array.isArray(data.moves) ? data.moves.length : 0} moves`); } catch {}
       const moves: Array<{ tileId: number; by: 'creator' | 'joiner' }> = Array.isArray(data.moves) ? data.moves : [];
+      // Suppress SFX while applying historical moves and during buffered flush for spectators
+      suppressSoundsRef.current = true;
+      try { setGlobalMute(true); } catch {}
       for (const m of moves) {
         const maker = m.by === 'creator' ? 'player' : 'opponent';
         processMove(m.tileId, maker as any, true);
       }
       hydrated = true;
       appliedHydrationRef.current = true;
+      // Mark spectator as rehydrated so pvpMove handler stops buffering
+      setIsRehydrated(true);
+      // Flush any buffered live moves that arrived during hydration
+      try {
+        const buf = spectatorMoveBufferRef.current;
+        if (buf.length) {
+          console.log(`[startSpectate] flushing ${buf.length} buffered moves`);
+          for (const item of buf) processMove(item.tileId, item.maker, true);
+          spectatorMoveBufferRef.current = [];
+        }
+      } catch {}
+      suppressSoundsRef.current = false;
+      try { setTimeout(() => setGlobalMute(false), 50); } catch {}
+      try { console.log(`[startSpectate] spectator rehydration complete, moves will now apply immediately`); } catch {}
     };
     setStartSpectateHandler(handler);
     return () => setStartSpectateHandler(undefined);
