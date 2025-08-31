@@ -169,10 +169,12 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   const [claiming, setClaiming] = useState(false);
   const [claimed, setClaimed] = useState(false);
   const [spectateOver, setSpectateOver] = useState(false);
+  // 30s turn timer for 1v1 PvP (local player only)
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const stats = useStats();
   const wallet = useWallet();
   const { play, setGlobalMute } = useSound();
-  const { lobbies, sendMessage, sendRequest, setPvpMoveHandler, setStartSpectateHandler, setGameOverHandler, setPfFinalSeedHandler, setRehydrateHandler, getProfile, ready: socketReady } = useSocket();
+  const { lobbies, sendMessage, sendRequest, setPvpMoveHandler, setStartSpectateHandler, setGameOverHandler, setPfFinalSeedHandler, setRehydrateHandler, getProfile, removeLobby, ready: socketReady } = useSocket();
   // Track whether authoritative rehydrate has completed
   const [isRehydrated, setIsRehydrated] = useState(false);
   const pendingMovesRef = useRef<Array<{ tileId: number; by?: 'creator' | 'joiner' }>>([]);
@@ -574,7 +576,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
     sentGameOverRef.current = false;
   }, [effSettings?.lobbyId]);
 
-  // Notify server when the PvP match concludes so lobbies update live
+  // Notify server when PvP match concludes so lobbies update live
   useEffect(() => {
     try {
       if (!isSpectator && isPvp && effSettings?.lobbyId && state.gameOver && !sentGameOverRef.current) {
@@ -589,6 +591,21 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
       }
     } catch {}
   }, [isSpectator, isPvp, effSettings?.lobbyId, state.gameOver, sendMessage]);
+
+  // Notify server when vsRobot match concludes so all clients remove lobby
+  useEffect(() => {
+    try {
+      if (!isSpectator && effSettings?.vsRobot && effSettings?.lobbyId && state.gameOver && !sentGameOverRef.current) {
+        sentGameOverRef.current = true;
+        let winnerSide: 'creator' | 'joiner' | undefined;
+        if (state.winner && effSettings?.myRole) {
+          if (state.winner === 'player') winnerSide = effSettings.myRole;
+          else if (state.winner === 'opponent') winnerSide = effSettings.myRole === 'creator' ? 'joiner' : 'creator';
+        }
+        sendMessage({ type: 'gameOver', lobbyId: effSettings.lobbyId, winner: winnerSide });
+      }
+    } catch {}
+  }, [isSpectator, effSettings?.vsRobot, effSettings?.lobbyId, state.gameOver, sendMessage]);
 
   // Maintain claim-required flag in localStorage for global nav guard
   useEffect(() => {
@@ -988,6 +1005,52 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
     } catch {}
   };
 
+  // 30s per-turn timer (PvP and vsRobot): runs for the current active turn
+  useEffect(() => {
+    const isTimedMode = (isPvp || effSettings?.vsRobot);
+    const canRunTimer = isTimedMode && !isSpectator && isRehydrated && !state.gameOver;
+    if (!canRunTimer) {
+      setSecondsLeft(null);
+      return;
+    }
+    setSecondsLeft(30);
+    const id = setInterval(() => {
+      setSecondsLeft(prev => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          clearInterval(id);
+          // On timeout: force move only if this client controls the active side
+          try {
+            if (effSettings?.vsRobot) {
+              if (state.activeTurn === 'opponent') {
+                // Force the bot to move
+                makeBotMove();
+              } else if (state.activeTurn === 'player' && !state.playerHasHitBomb) {
+                const unrevealed = state.tiles.filter(t => !t.isRevealed);
+                if (unrevealed.length > 0) {
+                  const randomTile = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+                  handleTileClick(randomTile.id);
+                }
+              }
+            } else if (isPvp) {
+              // In PvP, only force if it's the local player's turn
+              if (state.activeTurn === 'player' && !state.playerHasHitBomb) {
+                const unrevealed = state.tiles.filter(t => !t.isRevealed);
+                if (unrevealed.length > 0) {
+                  const randomTile = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+                  handleTileClick(randomTile.id);
+                }
+              }
+            }
+          } catch {}
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [isPvp, effSettings?.vsRobot, isSpectator, isRehydrated, state.gameOver, state.activeTurn, state.playerHasHitBomb, state.tiles]);
+
   const makeBotMove = () => {
     const unrevealedTiles = state.tiles.filter(t => !t.isRevealed);
     if (unrevealedTiles.length === 0) return;
@@ -1000,6 +1063,8 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
       }
     } catch {}
   };
+
+  // Note: Avoid removing lobby during game screen to prevent flicker; we'll remove in handleBack()
   
   const handleCoinflipComplete = (winner: 'player' | 'opponent') => {
     setState(s => ({ ...s, winner }));
@@ -1017,23 +1082,37 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   };
 
   const handleBack = () => {
-    // Block leaving while an active player during an ongoing match
-    const isActivePlayer = (!isSpectator && (isPvp || effSettings?.vsRobot) && !state.gameOver);
-    if (isActivePlayer) {
-      toast({ title: 'Match in progress', description: 'You cannot return to the lobby while the game is in progress.', variant: 'destructive' });
-      return;
+  // Block leaving while an active player during an ongoing match
+  const isActivePlayer = (!isSpectator && (isPvp || effSettings?.vsRobot) && !state.gameOver);
+  if (isActivePlayer) {
+    toast({ title: 'Match in progress', description: 'You cannot return to the lobby while the game is in progress.', variant: 'destructive' });
+    return;
+  }
+  // If winner in PvP or vs-robot, force claim before leaving
+  const mustClaim = (!isSpectator && (isPvp || effSettings?.vsRobot) && state.gameOver && state.winner === 'player' && !claimed);
+  if (mustClaim) {
+    toast({ title: 'Claim required', description: 'Please claim your winnings before returning to the lobby.', variant: 'destructive' });
+    return;
+  }
+  // For vsRobot games, proactively notify server and then remove lobby locally to keep lobby list clean
+  try {
+    if (effSettings?.vsRobot && effSettings?.lobbyId) {
+      try {
+        let winnerSide: 'creator' | 'joiner' | undefined;
+        if (state.winner && effSettings?.myRole) {
+          if (state.winner === 'player') winnerSide = effSettings.myRole;
+          else if (state.winner === 'opponent') winnerSide = effSettings.myRole === 'creator' ? 'joiner' : 'creator';
+        }
+        sendMessage({ type: 'gameOver', lobbyId: effSettings.lobbyId, winner: winnerSide });
+      } catch {}
+      removeLobby(effSettings.lobbyId);
     }
-    // If winner in PvP or vs-robot, force claim before leaving
-    const mustClaim = (!isSpectator && (isPvp || effSettings?.vsRobot) && state.gameOver && state.winner === 'player' && !claimed);
-    if (mustClaim) {
-      toast({ title: 'Claim required', description: 'Please claim your winnings before returning to the lobby.', variant: 'destructive' });
-      return;
-    }
-    // Clear localStorage when going back to prevent restoration
-    try { localStorage.removeItem(LS_PVP_KEY); } catch {}
-    try { localStorage.removeItem('pvp_claim_required'); } catch {}
-    onBack();
-  };
+  } catch {}
+  // Clear localStorage when going back to prevent restoration
+  try { localStorage.removeItem(LS_PVP_KEY); } catch {}
+  try { localStorage.removeItem('pvp_claim_required'); } catch {}
+  onBack();
+};
 
   // Receive opponent moves in PvP
   // Note: removed duplicate pvpMove handler registration that caused double-apply.
@@ -1181,6 +1260,9 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
                           ? (state.winner === 'player' ? `${leftName} Won` : state.winner === 'opponent' ? `${rightName} Won` : 'Tie Game')
                           : `${activeTurnName}'s Turn`}
                   </Badge>
+                  {( (isPvp || effSettings?.vsRobot) && !isSpectator && isRehydrated && !state.gameOver && secondsLeft !== null) && (
+                    <div className="mt-2 text-sm opacity-80">Time left: {secondsLeft ?? 0}s</div>
+                  )}
                 </div>
               </div>
             </div>

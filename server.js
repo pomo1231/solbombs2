@@ -589,24 +589,18 @@ wss.on('connection', function connection(ws) {
         const { lobbyId, winner } = message; // winner: 'creator' | 'joiner'
         const lobby = lobbies.find(l => l.id === lobbyId);
         if (!lobby) break;
-        lobby.status = 'finished';
-        lobby.spectators = [];
-        // winner bookkeeping
-        if (winner === 'creator' || winner === 'joiner') {
-          lobby.winner = winner;
-          lobby.winnerClientId = winner === 'creator' ? lobby.createdBy : lobby.joinedBy;
-        } else {
-          lobby.winner = undefined;
-          lobby.winnerClientId = undefined;
-        }
-        lobby.winningsClaimed = false;
-        broadcast({ type: 'lobbies', lobbies: lobbies.filter(l => l.status !== 'finished') });
-        const notify = { 
-          type: 'gameOver', 
+        // Prepare notification payload before removal
+        const notify = {
+          type: 'gameOver',
           lobbyId,
-          winner: lobby.winner,
+          winner: (winner === 'creator' || winner === 'joiner') ? winner : undefined,
           pfReveal: lobby.pf ? { commitHash: lobby.pf.commitHash, serverSecret: lobby.pf.serverSecret } : undefined,
         };
+        // Remove lobby from memory immediately to prevent it from reappearing in any future lobby broadcasts
+        lobbies = lobbies.filter(l => l.id !== lobbyId);
+        // Broadcast updated lobby list (without the removed lobby)
+        broadcast({ type: 'lobbies', lobbies });
+        // Notify all clients about game over and PF reveal
         for (const client of wss.clients) {
           if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(notify));
         }
@@ -616,7 +610,13 @@ wss.on('connection', function connection(ws) {
       case 'claimWinnings': {
         const { lobbyId } = message;
         const lobby = lobbies.find(l => l.id === lobbyId);
-        if (!lobby || lobby.status !== 'finished') {
+        if (!lobby) {
+          // Lobby was already removed after gameOver. Treat as success and broadcast a best-effort notice.
+          broadcast({ type: 'winningsClaimed', lobbyId });
+          ws.send(JSON.stringify({ type: 'ok', reqId: message.reqId }));
+          break;
+        }
+        if (lobby.status !== 'finished') {
           ws.send(JSON.stringify({ type: 'error', code: 'LOBBY_NOT_FINISHED', reqId: message.reqId }));
           break;
         }
@@ -630,7 +630,6 @@ wss.on('connection', function connection(ws) {
           break;
         }
         lobby.winningsClaimed = true;
-        // In a real integration, trigger on-chain payout here or verify it was done.
         broadcast({ type: 'winningsClaimed', lobbyId });
         ws.send(JSON.stringify({ type: 'ok', reqId: message.reqId }));
         break;
