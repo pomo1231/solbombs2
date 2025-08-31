@@ -238,6 +238,14 @@ pub struct CancelPvp<'info> {
             .checked_mul(2)
             .ok_or(SolbombsError::MathOverflow)?;
 
+        // Apply house rake (1% of pot) for multiplayer payouts
+        let rake_bps: u64 = 100; // 1%
+        let rake: u64 = (pot as u128)
+            .checked_mul(rake_bps as u128).ok_or(SolbombsError::MathOverflow)?
+            .checked_div(10_000u128).ok_or(SolbombsError::MathOverflow)? as u64;
+        let payout_after_rake: u64 = pot
+            .checked_sub(rake).ok_or(SolbombsError::MathOverflow)?;
+
         // If vs_robot and the winner is robot (counterparty), funds remain in treasury.
         if treating_as_robot && winner_side == 1 {
             // Robot wins: funds remain in treasury
@@ -248,7 +256,7 @@ pub struct CancelPvp<'info> {
         // Winner is a real pubkey (creator or human joiner). Ensure treasury balance
         require!(ctx.accounts.treasury.lamports() >= pot, SolbombsError::InsufficientTreasury);
 
-        // Transfer pot from treasury -> winner (treasury is PDA signer)
+        // Transfer (pot - rake) from treasury -> winner (treasury is PDA signer). Rake remains in treasury PDA.
         let treasury_bump = ctx.bumps.treasury;
         let signer_seeds: &[&[u8]] = &[b"treasury", &[treasury_bump]];
         let to_key = if winner_side == 0 { ctx.accounts.creator_account.key() } else { ctx.accounts.joiner_account.key() };
@@ -263,7 +271,7 @@ pub struct CancelPvp<'info> {
         let ix = anchor_lang::solana_program::system_instruction::transfer(
             &ctx.accounts.treasury.key(),
             &to_key,
-            pot,
+            payout_after_rake,
         );
         anchor_lang::solana_program::program::invoke_signed(
             &ix,
@@ -319,7 +327,7 @@ fn calculate_multiplier_bps(safe_revealed: u8, bombs: u8) -> Result<u16> {
     }
 
     let total_tiles = 25u32;
-    let house_edge_bps = 9900u32; // 0.99 = 99%
+    let house_edge_bps = 9850u32; // 0.985 = 98.5% => 1.5% house edge for solo
     
     // Calculate probability using fixed-point arithmetic (scale by 1_000_000)
     let scale = 1_000_000u64;

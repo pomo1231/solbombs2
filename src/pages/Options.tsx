@@ -9,6 +9,7 @@ import { useStats, UserProfile } from "@/context/StatsContext";
 import { RefreshCw, Edit } from 'lucide-react';
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Progress } from "@/components/ui/progress";
+import { useI18n } from '@/context/I18nContext';
 
 const compressImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -49,6 +50,7 @@ const compressImage = (file: File, maxWidth: number, maxHeight: number, quality:
 };
 
 const OptionsPage = () => {
+    const { t } = useI18n();
     const { publicKey } = useWallet();
     const { 
         isStreamerMode,
@@ -78,7 +80,7 @@ const OptionsPage = () => {
         if (!userProfile) return;
         const updatedProfile: UserProfile = { ...userProfile, name, email, clientSeed, avatarUrl: userProfile.avatarUrl };
         updateUserProfile(updatedProfile);
-        toast({ title: "Profile Saved", description: "Your details have been updated." });
+        toast({ title: t('options.toast.profileSaved.title'), description: t('options.toast.profileSaved.desc') });
     }
 
     const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,8 +93,8 @@ const OptionsPage = () => {
                 .catch(error => {
                     console.error("Image compression failed:", error);
                     toast({
-                        title: "Upload Failed",
-                        description: "Could not process the image. Please try another.",
+                        title: t('options.toast.uploadFailed.title'),
+                        description: t('options.toast.uploadFailed.desc'),
                         variant: "destructive",
                     });
                 });
@@ -111,28 +113,28 @@ const OptionsPage = () => {
     const handleStreamerModeToggle = () => {
         toggleStreamerMode();
         toast({
-            title: `Streamer mode ${!isStreamerMode ? "enabled" : "disabled"}`,
-            description: `Your information is now ${!isStreamerMode ? "hidden" : "visible"}.`,
+            title: !isStreamerMode ? t('options.toast.streamer.enabled') : t('options.toast.streamer.disabled'),
+            description: !isStreamerMode ? t('options.toast.streamer.desc.enabled') : t('options.toast.streamer.desc.disabled'),
         });
     };
 
     if (!publicKey || !userProfile) {
         return (
             <div className="container mx-auto p-4 text-center">
-                <h1 className="text-4xl font-bold mb-4">Options</h1>
-                <p>Please connect your wallet to view your options.</p>
+                <h1 className="text-4xl font-bold mb-4">{t('options.title')}</h1>
+                <p>{t('options.connectPrompt')}</p>
             </div>
         );
     }
 
   return (
     <div className="container mx-auto py-8 space-y-8">
-      <h1 className="text-3xl font-bold">Profile & Settings</h1>
+      <h1 className="text-3xl font-bold">{t('options.profileSettings')}</h1>
 
       {/* Profile Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Your Profile</CardTitle>
+          <CardTitle>{t('options.yourProfile')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-col md:flex-row items-start gap-6">
@@ -150,25 +152,25 @@ const OptionsPage = () => {
               />
               <Button variant="outline" size="sm" onClick={handleEditClick} className="w-full">
                 <Edit className="w-3 h-3 mr-2" />
-                Edit Avatar
+                {t('options.editAvatar')}
               </Button>
             </div>
             <div className="flex-grow space-y-4 w-full">
               <div>
-                <label className="text-sm font-medium">Level {level}</label>
+                <label className="text-sm font-medium">{t('options.level', { level: String(level) })}</label>
                 <Progress value={(xp / xpToNextLevel) * 100} className="w-full" />
                 <p className="text-xs text-right text-muted-foreground mt-1">
-                  {xp.toFixed(0)} / {xpToNextLevel} XP
+                  {t('options.xpProgress', { xp: xp.toFixed(0), xpToNext: String(xpToNextLevel) })}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium">Display Name</label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your name" />
-                 <p className="text-xs text-muted-foreground mt-1">This will be shown in chat and on leaderboards.</p>
+                <label className="text-sm font-medium">{t('options.displayName')}</label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('options.displayName.placeholder')} />
+                 <p className="text-xs text-muted-foreground mt-1">{t('options.displayName.help')}</p>
               </div>
               <div>
-                <label className="text-sm font-medium">Email</label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" />
+                <label className="text-sm font-medium">{t('options.email')}</label>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('options.email.placeholder')} />
               </div>
             </div>
           </div>
@@ -178,12 +180,12 @@ const OptionsPage = () => {
       {/* Security Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Security & Provably Fair</CardTitle>
+          <CardTitle>{t('options.security')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium">Client Seed</label>
-             <p className="text-xs text-muted-foreground mb-2">Used for verifying game fairness. You can change this at any time.</p>
+            <label className="text-sm font-medium">{t('options.clientSeed')}</label>
+             <p className="text-xs text-muted-foreground mb-2">{t('options.clientSeed.help')}</p>
             <div className="flex gap-2">
               <Input value={clientSeed} onChange={(e) => setClientSeed(e.target.value)} />
               <Button variant="secondary" onClick={generateNewSeed}><RefreshCw className="w-4 h-4" /></Button>
@@ -195,21 +197,21 @@ const OptionsPage = () => {
       {/* Account Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Account</CardTitle>
+          <CardTitle>{t('options.account')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium">Connected Account</label>
+            <label className="text-sm font-medium">{t('options.connectedAccount')}</label>
             <Input value={publicKey.toBase58()} readOnly disabled />
           </div>
           <div>
-            <label className="text-sm font-medium">Referred By</label>
-            <Input value={referredBy} onChange={(e) => setReferredBy(e.target.value)} placeholder="Referral code (optional)" />
+            <label className="text-sm font-medium">{t('options.referredBy')}</label>
+            <Input value={referredBy} onChange={(e) => setReferredBy(e.target.value)} placeholder={t('options.referredBy.placeholder')} />
           </div>
           <div className="flex items-center justify-between pt-4">
             <div>
-                <label htmlFor="streamer-mode" className="font-medium">Streamer Mode</label>
-                <p className="text-xs text-muted-foreground">Hide your sensitive information while streaming.</p>
+                <label htmlFor="streamer-mode" className="font-medium">{t('options.streamerMode')}</label>
+                <p className="text-xs text-muted-foreground">{t('options.streamerMode.help')}</p>
             </div>
             <Switch id="streamer-mode" checked={isStreamerMode} onCheckedChange={handleStreamerModeToggle} />
           </div>
@@ -217,7 +219,7 @@ const OptionsPage = () => {
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleProfileSave} size="lg">Save All Changes</Button>
+        <Button onClick={handleProfileSave} size="lg">{t('options.saveAll')}</Button>
       </div>
     </div>
   );

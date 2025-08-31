@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { useSocket } from '@/context/SocketContext';
+import { useI18n } from '@/context/I18nContext';
 
 const TopHeader = () => {
   const navigate = useNavigate();
   const { onlineCount } = useSocket();
+  const { t } = useI18n();
 
   const openCrispChat = () => {
     if ((window as any).$crisp) {
@@ -19,24 +21,24 @@ const TopHeader = () => {
           onClick={() => navigate('/provably-fair')}
           className="text-zinc-400 hover:text-white transition-colors"
         >
-          Provably Fair
+          {t('header.provablyFair')}
         </button>
         <button
           onClick={() => navigate('/terms-of-service')}
           className="text-zinc-400 hover:text-white transition-colors"
         >
-          Terms of Service
+          {t('header.termsOfService')}
         </button>
         <button
           onClick={openCrispChat}
           className="text-zinc-400 hover:text-white transition-colors"
         >
-          Support
+          {t('header.support')}
         </button>
       </div>
       <Badge variant="outline" className="bg-green-500/10 border-green-500/20 text-green-400">
         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2" />
-        {onlineCount} Online
+        {t('header.online', { count: String(onlineCount) })}
       </Badge>
     </header>
   );

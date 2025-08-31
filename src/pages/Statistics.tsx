@@ -2,6 +2,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStats } from "@/context/StatsContext";
 import { SolanaLogo } from "@/components/SolanaLogo";
+import { useI18n } from '@/context/I18nContext';
 
 const StatisticsPage = () => {
     const { 
@@ -9,6 +10,7 @@ const StatisticsPage = () => {
         netProfit, 
         gameHistory,
     } = useStats();
+    const { t } = useI18n();
 
     const chartData = gameHistory.slice().reverse().map((game, index) => ({
         game: index + 1,
@@ -19,10 +21,10 @@ const StatisticsPage = () => {
     <div className="container mx-auto py-8">
         <div className="space-y-8">
             <div>
-                <h2 className="text-2xl font-semibold mb-4 text-left">Statistics</h2>
+                <h2 className="text-2xl font-semibold mb-4 text-left">{t('statistics.title')}</h2>
                 <Card className="bg-gradient-to-r from-purple-900/50 to-indigo-900/50 border border-purple-500/50 p-1">
                     <CardContent className="pt-6">
-                        <p className="text-sm font-light text-gray-400 mb-2">Net Profit</p>
+                        <p className="text-sm font-light text-gray-400 mb-2">{t('statistics.netProfit')}</p>
                         <div className="flex items-center gap-3">
                             <SolanaLogo className="w-8 h-8 mr-0 drop-shadow-[0_1px_6px_rgba(20,241,149,0.35)]" />
                             <span className="text-3xl font-bold tracking-tight">{netProfit.toFixed(2)}</span>
@@ -33,11 +35,11 @@ const StatisticsPage = () => {
 
             <div>
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-semibold text-left">Wager Stats</h2>
+                    <h2 className="text-2xl font-semibold text-left">{t('statistics.wagerStats')}</h2>
                 </div>
                 <Card className="bg-zinc-800/80 h-80 flex items-center justify-center p-4">
                     {gameHistory.length === 0 ? (
-                        <p className="text-gray-400">No bets</p>
+                        <p className="text-gray-400">{t('statistics.noBets')}</p>
                     ) : (
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
@@ -58,10 +60,10 @@ const StatisticsPage = () => {
             </div>
 
             <div>
-                <h2 className="text-2xl font-semibold mb-4 text-left">Wager Stats</h2>
+                <h2 className="text-2xl font-semibold mb-4 text-left">{t('statistics.wagerStats')}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Card className="bg-zinc-800/80">
-                        <CardHeader><CardTitle className="font-normal text-gray-300">Total Wagered</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="font-normal text-gray-300">{t('statistics.totalWagered')}</CardTitle></CardHeader>
                         <CardContent>
                             <div className="flex items-center gap-3">
                                 <SolanaLogo className="w-7 h-7 mr-0 drop-shadow-[0_1px_6px_rgba(20,241,149,0.35)]" />
@@ -70,7 +72,7 @@ const StatisticsPage = () => {
                         </CardContent>
                     </Card>
                     <Card className="bg-zinc-800/80">
-                        <CardHeader><CardTitle className="font-normal text-gray-300">Profit</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="font-normal text-gray-300">{t('statistics.profit')}</CardTitle></CardHeader>
                         <CardContent>
                             <div className="flex items-center gap-3">
                                 <SolanaLogo className="w-7 h-7 mr-0 drop-shadow-[0_1px_6px_rgba(20,241,149,0.35)]" />

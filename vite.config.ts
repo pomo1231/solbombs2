@@ -13,10 +13,11 @@ export default defineConfig(({ mode }) => ({
       "venture-hoped-uniprotkb-milwaukee.trycloudflare.com",
       "sharon-fx-hon-slight.trycloudflare.com",
       "office-wiki-enquiry-persistent.trycloudflare.com",
+      "thirty-assumption-packaging-death.trycloudflare.com",
     ],
     hmr: {
       protocol: "wss",
-      host: "office-wiki-enquiry-persistent.trycloudflare.com",
+      host: "thirty-assumption-packaging-death.trycloudflare.com",
       clientPort: 443,
     },
     proxy: {

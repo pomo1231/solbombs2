@@ -49,6 +49,7 @@ const LiveChat: FC<LiveChatProps> = ({ wallet, isConnected }) => {
   });
   const ws = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastIdRef = useRef<string | undefined>(undefined);
   const [wsReady, setWsReady] = useState(false);
   const [replyTo, setReplyTo] = useState<{ id: string; name: string; snippet: string } | null>(null);
   const [showEmoji, setShowEmoji] = useState(false);
@@ -96,6 +97,14 @@ const LiveChat: FC<LiveChatProps> = ({ wallet, isConnected }) => {
     try { localStorage.setItem('chat_messages', JSON.stringify(messages.slice(-200))); } catch {}
   }, [messages]);
 
+  // Track the latest message id for incremental history fetches
+  useEffect(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const id = messages[i]?.id;
+      if (id) { lastIdRef.current = id; break; }
+    }
+  }, [messages]);
+
   useEffect(() => {
     try { localStorage.setItem('chat_collapsed', collapsed ? '1' : '0'); } catch {}
   }, [collapsed]);
@@ -118,6 +127,11 @@ const LiveChat: FC<LiveChatProps> = ({ wallet, isConnected }) => {
     ws.current.onopen = () => {
       console.log('[LiveChat] connected to', WS_URL);
       setWsReady(true);
+      // Request recent messages (after the last known id if available)
+      try {
+        const afterId = lastIdRef.current;
+        ws.current?.send(JSON.stringify({ type: 'getRecentMessages', limit: 200, afterId }));
+      } catch {}
     };
 
     ws.current.onerror = (err) => {
@@ -340,7 +354,7 @@ const LiveChat: FC<LiveChatProps> = ({ wallet, isConnected }) => {
         {toggleBtn}
         {/* Chat content - hidden when collapsed */}
         <div className={`flex-1 overflow-hidden ${collapsed ? 'hidden' : 'flex flex-col'}`}>
-          <div className="flex-1 overflow-y-auto pt-2 no-scrollbar bg-[#18191c]">
+          <div className="flex-1 overflow-y-auto pt-2 themed-scrollbar bg-[#18191c]">
             {isChatPaused && (
               <ChatNotice text="Chat is paused by the streamer" icon={PauseCircle} />
             )}

@@ -243,16 +243,38 @@
           "type": "u8"
         }
       ]
-    }
-    ,
+    },
     {
       "name": "cancelPvp",
       "accounts": [
-        { "name": "payer", "isMut": true, "isSigner": true },
-        { "name": "pvpGame", "isMut": true, "isSigner": false },
-        { "name": "treasury", "isMut": true, "isSigner": false },
-        { "name": "creatorAccount", "isMut": true, "isSigner": false },
-        { "name": "systemProgram", "isMut": false, "isSigner": false }
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "pvpGame",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasury",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creatorAccount",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Creator to receive refund"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
       ],
       "args": []
     }

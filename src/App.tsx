@@ -20,6 +20,7 @@ import TermsOfServicePage from './pages/TermsOfService';
 import SupportPage from './pages/Support';
 import BackgroundFX from './components/BackgroundFX';
 import Footer from './components/layout/Footer';
+import { I18nProvider } from './context/I18nContext';
 
 export function App() {
   const { publicKey, connected } = useWallet();
@@ -66,8 +67,9 @@ export function App() {
   };
 
   return (
-    <BrowserRouter>
-      <Routes>
+    <I18nProvider>
+      <BrowserRouter>
+        <Routes>
         <Route
           path="/"
           element={
@@ -159,5 +161,6 @@ export function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
+    </I18nProvider>
   );
 }

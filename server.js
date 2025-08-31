@@ -1,6 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
 import url from 'url';
+import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
@@ -78,7 +79,10 @@ const clients = new Map(); // ws -> clientId
 const sessionToWs = new Map(); // sessionId -> ws
 
 // Simple file-backed storage for user stats and profiles
-const DB_PATH = path.join(process.cwd(), 'stats-db.json');
+// Use absolute path based on the current file location to avoid resets when CWD changes.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DB_PATH = path.join(__dirname, 'stats-db.json');
 /** @type {Record<string, { totalWagered: number, gameHistory: any[] }>} */
 let userStats = {};
 /** @type {Record<string, { name?: string; email?: string; avatarUrl?: string; clientSeed?: string }>} */
@@ -431,6 +435,8 @@ wss.on('connection', function connection(ws) {
         if (watcherId && !lobby.spectators.includes(watcherId)) {
           lobby.spectators.push(watcherId);
           try { console.log(`[spectateLobby] added spectator session=${watcherId} totalSpectators=${lobby.spectators.length}`); } catch {}
+          // Notify everyone so UI spectator counts update live
+          try { broadcast({ type: 'lobbies', lobbies: lobbies.filter(l => l.status !== 'finished') }); } catch {}
         }
         // Send current state & moves
         const payload = {
@@ -450,6 +456,76 @@ wss.on('connection', function connection(ws) {
           startsBy: lobby.startsBy,
         };
         try { console.log(`[spectateLobby] sending startSpectate to session=${watcherId} movesLen=${(lobby.moveHistory || []).length}`); } catch {}
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
+        break;
+      }
+
+      case 'rehydrateLobby': {
+        // Participant reconnection support: send current board and move history
+        const { lobbyId, pvpGamePda, gameNonce, wallet } = message;
+        try { console.log(`[rehydrateLobby] request: lobbyId=${lobbyId} wallet=${wallet || 'n/a'}`); } catch {}
+        let lobby = null;
+        if (lobbyId) lobby = lobbies.find(l => l.id === lobbyId);
+        if (!lobby && pvpGamePda) lobby = lobbies.find(l => l.pvpGamePda && l.pvpGamePda === pvpGamePda);
+        if (!lobby && (typeof gameNonce === 'number')) lobby = lobbies.find(l => l.gameNonce === gameNonce);
+        if (!lobby) {
+          try { console.log(`[rehydrateLobby] lobby not found for id=${lobbyId}`); } catch {}
+          break;
+        }
+        if (lobby.status !== 'started') {
+          try { console.log(`[rehydrateLobby] lobby status=${lobby.status} (not started)`); } catch {}
+          break;
+        }
+        const cid = clients.get(ws);
+        const isCreator = cid === lobby.createdBy;
+        const isJoiner = cid === lobby.joinedBy;
+        // Allow wallet-based auth as well (clients may reconnect with a new clientId after refresh)
+        const walletStr = typeof wallet === 'string' ? wallet : '';
+        const walletIsCreator = !!walletStr && !!lobby.creatorWallet && lobby.creatorWallet === walletStr;
+        const walletIsJoiner = !!walletStr && !!lobby.joinerWallet && lobby.joinerWallet === walletStr;
+        const participantById = isCreator || isJoiner;
+        const participantByWallet = walletIsCreator || walletIsJoiner;
+        // In robot games, only creator is a human participant but allow rehydrate to creator by wallet or id
+        const allowed = participantById || participantByWallet || (lobby.vsRobotActive && (isCreator || walletIsCreator));
+        try { console.log(`[rehydrateLobby] auth check: cid=${cid} isCreator=${isCreator} isJoiner=${isJoiner} walletIsCreator=${walletIsCreator} walletIsJoiner=${walletIsJoiner} allowed=${allowed}`); } catch {}
+        if (!allowed) {
+          try { console.log(`[rehydrateLobby] access denied for cid=${cid} wallet=${walletStr}`); } catch {}
+          break;
+        }
+        const yourRole = isCreator || walletIsCreator ? 'creator' : (isJoiner || walletIsJoiner ? 'joiner' : (lobby.vsRobotActive ? 'creator' : undefined));
+        // Rebind participant to this fresh connection so subsequent pvpMove forwards reach the refreshed client
+        if (yourRole === 'creator') {
+          if (lobby.createdBy !== cid) {
+            try { console.log(`[rehydrateLobby] rebind creator from ${lobby.createdBy} -> ${cid} for lobby=${lobby.id}`); } catch {}
+            lobby.createdBy = cid;
+          }
+          // Persist wallet if provided
+          if (walletStr) lobby.creatorWallet = walletStr;
+        } else if (yourRole === 'joiner') {
+          if (lobby.joinedBy !== cid) {
+            try { console.log(`[rehydrateLobby] rebind joiner from ${lobby.joinedBy} -> ${cid} for lobby=${lobby.id}`); } catch {}
+            lobby.joinedBy = cid;
+          }
+          if (walletStr) lobby.joinerWallet = walletStr;
+        }
+        const payload = {
+          type: 'rehydrate',
+          lobbyId: lobby.id,
+          betAmount: lobby.betAmount,
+          bombCount: lobby.bombCount,
+          boardSeed: lobby.boardSeed,
+          moves: lobby.moveHistory || [],
+          startsBy: lobby.startsBy,
+          yourRole,
+          creatorWallet: lobby.creatorWallet || null,
+          joinerWallet: lobby.joinerWallet || null,
+          creatorName: lobby.creatorName || null,
+          creatorAvatar: lobby.creatorAvatar || null,
+          joinerName: lobby.joinerName || (lobby.vsRobotActive ? 'Robot' : null),
+          joinerAvatar: lobby.joinerAvatar || null,
+          vsRobotActive: !!lobby.vsRobotActive,
+        };
+        try { console.log(`[rehydrateLobby] -> ${cid} lobby=${lobby.id} wallet=${walletStr || 'n/a'} movesLen=${(lobby.moveHistory || []).length}`); } catch {}
         if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
         break;
       }
@@ -624,114 +700,8 @@ wss.on('connection', function connection(ws) {
         break;
       }
 
-            case 'pvpMove': {
-                const { lobbyId, tileId } = message;
-                const lobby = lobbies.find(l => l.id === lobbyId);
-                if (!lobby || lobby.status !== 'started') break;
-                // Determine side and record
-                const senderId = clients.get(ws);
-                const by = (senderId === lobby.createdBy) ? 'creator' : 'joiner';
-                lobby.moveHistory = lobby.moveHistory || [];
-                lobby.moveHistory.push({ tileId, by });
-                // Forward to the other participant
-                const targetClientId = (senderId === lobby.createdBy) ? lobby.joinedBy : lobby.createdBy;
-                if (targetClientId) {
-                    for (const client of wss.clients) {
-                        if (clients.get(client) === targetClientId && client.readyState === WebSocket.OPEN) {
-                            client.send(JSON.stringify({ type: 'pvpMove', lobbyId, tileId, by }));
-                        }
-                    }
-                }
-                // Also forward to spectators
-                if (Array.isArray(lobby.spectators) && lobby.spectators.length) {
-                  for (const client of wss.clients) {
-                    const cid = clients.get(client);
-                    if (lobby.spectators.includes(cid) && client.readyState === WebSocket.OPEN) {
-                      client.send(JSON.stringify({ type: 'pvpMove', lobbyId, tileId, by }));
-                    }
-                  }
-                }
-                break;
-            }
-
-            case 'spectateLobby': {
-                const { lobbyId } = message;
-                const lobby = lobbies.find(l => l.id === lobbyId);
-                if (!lobby || lobby.status !== 'started') break;
-                const cid = clients.get(ws);
-                lobby.spectators = lobby.spectators || [];
-                if (!lobby.spectators.includes(cid)) lobby.spectators.push(cid);
-                const payload = {
-                  type: 'startSpectate',
-                  lobbyId: lobby.id,
-                  betAmount: lobby.betAmount,
-                  bombCount: lobby.bombCount,
-                  moves: Array.isArray(lobby.moveHistory) ? lobby.moveHistory : [],
-                  // also include identities here for the duplicate handler
-                  creatorWallet: lobby.creatorWallet,
-                  joinerWallet: lobby.joinerWallet,
-                  creatorName: lobby.creatorName || null,
-                  creatorAvatar: lobby.creatorAvatar || null,
-                  joinerName: lobby.joinerName || null,
-                  joinerAvatar: lobby.joinerAvatar || null,
-                };
-                if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
-                break;
-            }
-
-            case 'gameOver': {
-                const { lobbyId } = message;
-                const lobby = lobbies.find(l => l.id === lobbyId);
-                if (!lobby) break;
-                lobby.status = 'finished';
-                lobby.spectators = [];
-                broadcast({ type: 'lobbies', lobbies: lobbies.filter(l => l.status !== 'finished') });
-                const notify = { type: 'gameOver', lobbyId };
-                for (const client of wss.clients) {
-                  if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(notify));
-                }
-                break;
-            }
-            
-            case 'getLobbies':
-                ws.send(JSON.stringify({ type: 'lobbies', lobbies: lobbies.filter(l => l.status !== 'finished'), reqId: message.reqId }));
-                break;
-
-            case 'getStats': {
-                const { wallet } = message;
-                if (typeof wallet !== 'string') break;
-                const stats = userStats[wallet] || { totalWagered: 0, gameHistory: [] };
-                ws.send(JSON.stringify({ type: 'stats', wallet, stats, reqId: message.reqId }));
-                break;
-            }
-
-            case 'putStats': {
-                const { wallet, payload } = message;
-                try {
-                    if (typeof wallet !== 'string') break;
-                    // Basic payload validation
-                    if (!payload || typeof payload.totalWagered !== 'number' || !Array.isArray(payload.gameHistory)) {
-                        ws.send(JSON.stringify({ type: 'error', code: 'BAD_PAYLOAD', reqId: message.reqId }));
-                        break;
-                    }
-                    // Accept and persist (optionally clamp history length)
-                    userStats[wallet] = {
-                        totalWagered: Math.max(0, Number(payload.totalWagered) || 0),
-                        gameHistory: payload.gameHistory.slice(0, 1000),
-                    };
-                    saveDb();
-                    ws.send(JSON.stringify({ type: 'ok', reqId: message.reqId }));
-                } catch (e) {
-                    console.error('putStats failed:', e);
-                    ws.send(JSON.stringify({ type: 'error', code: 'SERVER', reqId: message.reqId }));
-                }
-                break;
-            }
-
-            // removed legacy duplicate chatMessage case
-
-            default:
-                console.log('Received unknown message type:', message.type);
+      default:
+        console.log('Received unknown message type:', message.type);
         }
     });
 
@@ -745,6 +715,16 @@ wss.on('connection', function connection(ws) {
           if (lobby.status === 'finished' && lobby.winner && lobby.winningsClaimed !== true) return true; // keep it
           return false; // remove if open or claimed finished
         });
+        // Remove this client from spectators of all remaining lobbies
+        for (const lobby of lobbies) {
+          if (Array.isArray(lobby.spectators)) {
+            const before = lobby.spectators.length;
+            lobby.spectators = lobby.spectators.filter((cid) => cid !== clientId);
+            if (lobby.spectators.length !== before) {
+              try { console.log(`[disconnect] removed spectator from lobby=${lobby.id} newCount=${lobby.spectators.length}`); } catch {}
+            }
+          }
+        }
         
         // cleanup session mapping
         // @ts-ignore

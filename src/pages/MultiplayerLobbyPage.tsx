@@ -447,6 +447,7 @@ export function MultiplayerLobbyPage({ onStartGame }: MultiplayerLobbyPageProps)
             const statusText = (joinerWallet || isRobot) ? 'Ready' : 'Waiting...';
             const hostLevel = (userProfile as any)?.level ?? 1;
             const joinerLevel = (game as any).joinerLevel ?? 1;
+            const spectatorsCount: number = (game as any).spectatorsCount ?? ((Array.isArray((game as any).spectators) ? (game as any).spectators.length : 0));
             return (
               <div key={game.id} className="group flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 md:px-4 py-2 md:py-3 shadow-sm hover:bg-white/8 transition">
                 {/* VS layout */}
@@ -505,6 +506,11 @@ export function MultiplayerLobbyPage({ onStartGame }: MultiplayerLobbyPageProps)
                   <div className="hidden sm:flex items-center gap-1.5 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-xs text-white/80">
                     <span>💣</span>
                     <span className="font-medium">{game.bombCount}</span>
+                  </div>
+                  {/* Spectators chip */}
+                  <div className="hidden sm:flex items-center gap-1.5 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-xs text-white/80" title="Spectators">
+                    <Eye className="w-3.5 h-3.5" />
+                    <span className="font-medium">{spectatorsCount}</span>
                   </div>
                   <div className="flex items-center gap-1.5 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-xs text-white/80">
                     <img src={solanaLogo} alt="SOL" className="w-3.5 h-3.5" />

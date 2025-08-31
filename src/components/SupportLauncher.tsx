@@ -49,14 +49,14 @@ export default function SupportLauncher() {
 
   return (
     <>
-      {/* Invisible blocker to prevent clicks reaching Crisp default bubble */}
+      {/* Invisible blocker to prevent clicks reaching Crisp default bubble (limit to bottom-right corner only) */}
       <div
         className="fixed"
         style={{
           right: 0,
           bottom: 0,
-          width: 200,
-          height: 200,
+          width: 96,
+          height: 96,
           zIndex: 2147483646,
           background: 'transparent',
           pointerEvents: 'auto'

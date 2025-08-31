@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Bomb, Gem, RotateCcw, DollarSign, Trophy } from 'lucide-react';
+import { Bomb, Gem, RotateCcw, DollarSign, Trophy, Eye } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useStats } from '@/context/StatsContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
@@ -119,25 +119,50 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   const LS_PVP_KEY = 'pvp_game_state_v1';
   const sentGameOverRef = useRef(false);
   const [state, setState] = useState<GameState>(() => {
-    // Attempt to restore from localStorage immediately to avoid later effects overwriting
+    // Check if this is a PvP/vsRobot game from settings or localStorage
+    let isPvpGame = false;
+    if (settings?.lobbyId && (settings?.opponent === 'player' || settings?.vsRobot)) {
+      isPvpGame = true;
+    } else {
+      // Check localStorage for PvP context
+      try {
+        const raw = localStorage.getItem(LS_PVP_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw);
+          if (saved?.settings?.lobbyId && (saved?.settings?.opponent === 'player' || saved?.settings?.vsRobot)) {
+            isPvpGame = true;
+          }
+        }
+      } catch {}
+    }
+    
+    // For PvP/vsRobot games, always start fresh and wait for server rehydrate
+    if (isPvpGame) {
+      console.log(`1v1 init - waiting for server rehydrate (isPvpGame: true)`);
+      return createInitialState(settings);
+    }
+    
+    // For solo games, attempt localStorage restore
     try {
       const raw = localStorage.getItem(LS_PVP_KEY);
       if (raw) {
         const saved = JSON.parse(raw);
         if (saved?.state && !saved.state.gameOver) {
-          const hasRevealedTiles = saved.state.tiles && saved.state.tiles.some((t: any) => t.isRevealed);
-          if (hasRevealedTiles) {
-            console.log('1v1 initial restore - restoring saved game state');
-            const base = createInitialState(settings);
-            return {
-              ...base,
-              ...saved.state,
-              tiles: Array.isArray(saved.state.tiles) ? saved.state.tiles : base.tiles,
-            } as GameState;
+          const savedWallet = saved.wallet;
+          const currentWallet = wallet?.publicKey?.toBase58();
+          console.log(`solo restore - saved wallet: ${savedWallet} current wallet: ${currentWallet}`);
+          if (savedWallet === currentWallet) {
+            const hasRevealedTiles = saved.state.tiles?.some((t: any) => t.isRevealed);
+            console.log(`solo restore - has revealed tiles: ${hasRevealedTiles}`);
+            if (hasRevealedTiles) {
+              console.log(`solo restore - restoring state`);
+              return saved.state;
+            }
           }
         }
       }
     } catch {}
+    // Fallback: create fresh state
     return createInitialState(settings);
   });
   const [coinflip, setCoinflip] = useState<CoinflipState>({ show: false, winner: null });
@@ -147,7 +172,10 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   const stats = useStats();
   const wallet = useWallet();
   const { play } = useSound();
-  const { sendMessage, setPvpMoveHandler, setStartSpectateHandler, setGameOverHandler, setPfFinalSeedHandler, getProfile, ready: socketReady } = useSocket();
+  const { lobbies, sendMessage, sendRequest, setPvpMoveHandler, setStartSpectateHandler, setGameOverHandler, setPfFinalSeedHandler, setRehydrateHandler, getProfile, ready: socketReady } = useSocket();
+  // Track whether authoritative rehydrate has completed
+  const [isRehydrated, setIsRehydrated] = useState(false);
+  const pendingMovesRef = useRef<Array<{ tileId: number; by?: 'creator' | 'joiner' }>>([]);
   // Effective settings: prefer props, otherwise restore from LS
   const [effSettings, setEffSettings] = useState<GameSettings | undefined>(() => {
     // If we have fresh settings from props, use those and don't restore
@@ -171,6 +199,21 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   const isSpectator = !!effSettings?.spectate;
   const appliedHydrationRef = useRef(false);
 
+  // Live spectator count for this lobby (updates with lobby broadcasts)
+  const spectatorsCount = useMemo(() => {
+    try {
+      const byId = effSettings?.lobbyId ? lobbies.find(l => l.id === effSettings!.lobbyId) : undefined;
+      let lobby = byId;
+      if (!lobby && effSettings?.pvpGamePda) lobby = lobbies.find(l => l.pvpGamePda === effSettings!.pvpGamePda);
+      if (!lobby && typeof (effSettings as any)?.gameNonce === 'number') lobby = lobbies.find(l => l.gameNonce === (effSettings as any).gameNonce);
+      if (!lobby) return 0;
+      const explicit = (lobby as any).spectatorsCount;
+      if (typeof explicit === 'number') return explicit;
+      const arr = (lobby as any).spectators;
+      return Array.isArray(arr) ? arr.length : 0;
+    } catch { return 0; }
+  }, [lobbies, effSettings?.lobbyId, effSettings?.pvpGamePda, (effSettings as any)?.gameNonce]);
+
   // Profiles for creator/joiner to show names/avatars in the sidebar
   const [creatorProfile, setCreatorProfile] = useState<{ name?: string; avatarUrl?: string } | null>(null);
   const [joinerProfile, setJoinerProfile] = useState<{ name?: string; avatarUrl?: string } | null>(null);
@@ -182,6 +225,193 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
     if (cp.name || cp.avatarUrl) setCreatorProfile(cp);
     if (jp.name || jp.avatarUrl) setJoinerProfile(jp);
   }, [effSettings?.creatorName, effSettings?.creatorAvatar, effSettings?.joinerName, effSettings?.joinerAvatar]);
+
+  // Rehydrate handler: rebuild board from server state (boardSeed + move history)
+  useEffect(() => {
+    const handler = (data: any) => {
+      if (!effSettings?.lobbyId || data?.lobbyId !== effSettings.lobbyId) return;
+      try { console.log('[rehydrate] <-', data); } catch {}
+      try {
+        const boardSeed: string | undefined = data.boardSeed;
+        const bombs = typeof data.bombCount === 'number' ? data.bombCount : state.bombCount;
+        const amount = typeof data.betAmount === 'number' ? data.betAmount : state.betAmount;
+        if (boardSeed) {
+          const bombPositions = new Set<number>();
+          const bombLocations = generateBombLocations(boardSeed, 'shared', 0, bombs);
+          bombLocations.forEach(pos => bombPositions.add(pos));
+          setState(prev => ({
+            ...prev,
+            // reset runtime flags so clicks aren't blocked by stale flags
+            playerHasHitBomb: false,
+            opponentHasHitBomb: false,
+            gameOver: false,
+            winner: null,
+            playerScore: 0,
+            opponentScore: 0,
+            betAmount: amount,
+            bombCount: bombs,
+            tiles: Array.from({ length: 25 }, (_, i) => ({ id: i, isRevealed: false, isBomb: bombPositions.has(i), revealedBy: null })),
+            minesPlaced: true,
+            serverSeed: boardSeed,
+            clientSeed: 'shared',
+            nonce: 0,
+            activeTurn: data.startsBy === 'creator' ? (data.yourRole === 'creator' ? 'player' : 'opponent') : (data.yourRole === 'joiner' ? 'player' : 'opponent')
+          }));
+          setEffSettings(es => es ? { ...es, boardSeed, myRole: data.yourRole, startsBy: data.startsBy } : es);
+        }
+        // Ensure role/startsBy are stored even if boardSeed wasn't present
+        if (!boardSeed && (data.yourRole || data.startsBy)) {
+          setEffSettings(es => es ? { ...es, myRole: data.yourRole ?? es.myRole, startsBy: data.startsBy ?? es.startsBy } : es);
+        }
+        const moves: Array<{ tileId: number; by: 'creator' | 'joiner' }> = Array.isArray(data.moves) ? data.moves : [];
+        // Defer replay so the above setState commits (minesPlaced=true, tiles seeded)
+        setTimeout(() => {
+          try { console.log(`[rehydrate] replaying ${moves.length} moves:`, moves); } catch {}
+          for (const m of moves) {
+            const maker = (data.yourRole === 'creator') ? (m.by === 'creator' ? 'player' : 'opponent') : (m.by === 'joiner' ? 'player' : 'opponent');
+            try { console.log(`[rehydrate] applying move tileId=${m.tileId} by=${m.by} -> maker=${maker}`); } catch {}
+            processMove(m.tileId, maker as any, true);
+          }
+          // Flush any moves that arrived during reconnect before we had roles/board
+          let bufferedCount = 0;
+          if (pendingMovesRef.current.length) {
+            const buffered = [...pendingMovesRef.current];
+            pendingMovesRef.current.length = 0;
+            bufferedCount = buffered.length;
+            try { console.log(`[rehydrate] flushing ${bufferedCount} buffered moves:`, buffered); } catch {}
+            for (const pm of buffered) {
+              const maker = (data.yourRole === 'creator') ? (pm.by === 'creator' ? 'player' : 'opponent') : (pm.by === 'joiner' ? 'player' : 'opponent');
+              try { console.log(`[rehydrate] buffered move tileId=${pm.tileId} by=${pm.by} -> maker=${maker}`); } catch {}
+              processMove(pm.tileId, maker as any, true);
+            }
+          }
+          // After replaying, set the correct next turn explicitly based on startsBy and total moves
+          const totalMoves = moves.length + bufferedCount;
+          const nextBy: 'creator' | 'joiner' | undefined = data.startsBy
+            ? ((totalMoves % 2 === 0) ? data.startsBy : (data.startsBy === 'creator' ? 'joiner' : 'creator'))
+            : undefined;
+          if (nextBy && data.yourRole) {
+            // For vsRobot games, creator is always the human player
+            const nextTurn = data.vsRobotActive 
+              ? (nextBy === 'creator' ? 'player' : 'opponent')
+              : (nextBy === data.yourRole ? 'player' : 'opponent');
+            try { console.log(`[rehydrate] setting activeTurn=${nextTurn} (totalMoves=${totalMoves}, nextBy=${nextBy}, yourRole=${data.yourRole}, vsRobot=${data.vsRobotActive})`); } catch {}
+            setState(prev => ({ ...prev, activeTurn: nextTurn }));
+          }
+          setIsRehydrated(true);
+          try { console.log(`[rehydrate] complete - handler will now process live moves`); } catch {}
+        }, 0);
+      } catch {}
+    };
+    setRehydrateHandler?.(handler);
+    return () => setRehydrateHandler?.(undefined);
+  }, [setRehydrateHandler, effSettings?.lobbyId, state.betAmount, state.bombCount]);
+
+  // Register live PvP move handler so refreshed clients receive subsequent moves
+  useEffect(() => {
+    // Register early; filter inside handler. This avoids missing moves while lobbyId isn't yet set after refresh.
+    const h = ({ lobbyId, tileId, by }: { lobbyId?: string; tileId: number; by?: 'creator' | 'joiner' }) => {
+      if (lobbyId && effSettings?.lobbyId && effSettings.lobbyId !== lobbyId) {
+        try { console.log('[pvpMove] ignored: different lobbyId', { eventLobbyId: lobbyId, currentLobbyId: effSettings?.lobbyId }); } catch {}
+        return;
+      }
+      if (!lobbyId && effSettings?.lobbyId) {
+        try { console.warn('[pvpMove] missing lobbyId; accepting for current lobby context', { currentLobbyId: effSettings?.lobbyId }); } catch {}
+      }
+      try { console.log('[pvpMove] <-', { lobbyId, tileId, by, myRole: effSettings?.myRole, rehydrated: isRehydrated, gameOver: state.gameOver }); } catch {}
+      if (state.gameOver) return;
+      
+      // If we haven't rehydrated yet (role/board unknown), buffer the move
+      if (!isSpectator && (isPvp || effSettings?.vsRobot) && !isRehydrated) {
+        try { console.log('[pvpMove] buffering move until rehydrate completes'); } catch {}
+        pendingMovesRef.current.push({ tileId, by });
+        return;
+      }
+      
+      // Map server 'by' to local player/opponent
+      if (by) {
+        if (isSpectator) {
+          const maker: 'player' | 'opponent' = by === 'creator' ? 'player' : 'opponent';
+          processMove(tileId, maker, true);
+          return;
+        }
+        if (effSettings?.myRole) {
+          const iAmCreator = effSettings.myRole === 'creator';
+          const isByCreator = by === 'creator';
+          const maker: 'player' | 'opponent' = (iAmCreator === isByCreator) ? 'player' : 'opponent';
+          try { console.log(`[pvpMove] applying: tileId=${tileId} by=${by} myRole=${effSettings.myRole} -> maker=${maker}`); } catch {}
+          processMove(tileId, maker, true);
+          return;
+        }
+      }
+      // Fallback: treat as opponent
+      try { console.log(`[pvpMove] fallback: treating as opponent move`); } catch {}
+      processMove(tileId, 'opponent', true);
+    };
+    
+    setPvpMoveHandler?.(h);
+    return () => setPvpMoveHandler?.(undefined);
+  }, [setPvpMoveHandler, effSettings?.lobbyId, effSettings?.myRole, isSpectator, state.gameOver, isPvp, effSettings?.vsRobot, isRehydrated]);
+
+  // If rehydrate didn't arrive but we unblocked via timeout (isRehydrated=true), flush buffered moves
+  useEffect(() => {
+    if (!isRehydrated) return;
+    if (!pendingMovesRef.current.length) return;
+    try { console.warn('[rehydrate] post-unblock: flushing buffered moves (no explicit rehydrate)'); } catch {}
+    const buffered = [...pendingMovesRef.current];
+    pendingMovesRef.current.length = 0;
+    for (const pm of buffered) {
+      if (isSpectator) {
+        const maker: 'player' | 'opponent' = pm.by === 'creator' ? 'player' : 'opponent';
+        processMove(pm.tileId, maker, true);
+        continue;
+      }
+      if (effSettings?.myRole && pm.by) {
+        const iAmCreator = effSettings.myRole === 'creator';
+        const isByCreator = pm.by === 'creator';
+        const maker: 'player' | 'opponent' = (iAmCreator === isByCreator) ? 'player' : 'opponent';
+        try { console.log(`[rehydrate] post-unblock buffered move tileId=${pm.tileId} by=${pm.by} -> maker=${maker}`); } catch {}
+        processMove(pm.tileId, maker, true);
+      } else {
+        try { console.warn('[rehydrate] post-unblock buffered move with unknown role; treating as opponent', pm); } catch {}
+        processMove(pm.tileId, 'opponent', true);
+      }
+    }
+  }, [isRehydrated, effSettings?.myRole, isSpectator]);
+
+  // On socket ready (or mount), if we're a participant and have lobby context, request rehydrate
+  useEffect(() => {
+    try {
+      if (!socketReady) return;
+      if (!effSettings?.lobbyId) return;
+      if (isSpectator) return;
+      if (!(isPvp || effSettings?.vsRobot)) return;
+      // Reset rehydration gate before requesting authoritative state
+      setIsRehydrated(false);
+      // Fallback: if we don't receive rehydrate in time, unblock to avoid deadlock
+      const timeoutId = setTimeout(() => {
+        setIsRehydrated(prev => {
+          if (!prev) {
+            try { console.warn('[rehydrate] timeout; unblocking clicks as fallback'); } catch {}
+            return true;
+          }
+          return prev;
+        });
+      }, 1500);
+      const rehydrateMsg = {
+        type: 'rehydrateLobby',
+        lobbyId: effSettings.lobbyId,
+        pvpGamePda: effSettings.pvpGamePda,
+        gameNonce: (effSettings as any).gameNonce,
+        wallet: wallet?.publicKey ? wallet.publicKey.toBase58() : undefined,
+      };
+      try { console.log('[rehydrateLobby] ->', rehydrateMsg); } catch {}
+      sendMessage(rehydrateMsg);
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    } catch {}
+  }, [socketReady, effSettings?.lobbyId, isSpectator, isPvp, effSettings?.vsRobot, wallet?.publicKey]);
 
   // Fetch profiles when lobby context known (refresh/cache fill)
   useEffect(() => {
@@ -329,26 +559,26 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   // Maintain claim-required flag in localStorage for global nav guard
   useEffect(() => {
     try {
-      if (!isSpectator && isPvp && state.gameOver && state.winner === 'player' && !claimed) {
+      if (!isSpectator && (isPvp || effSettings?.vsRobot) && state.gameOver && state.winner === 'player' && !claimed) {
         const lobbyId = effSettings?.lobbyId || 'unknown';
         localStorage.setItem('pvp_claim_required', JSON.stringify({ lobbyId, ts: Date.now() }));
       } else {
         localStorage.removeItem('pvp_claim_required');
       }
     } catch {}
-  }, [isSpectator, isPvp, state.gameOver, state.winner, claimed, effSettings?.lobbyId]);
+  }, [isSpectator, isPvp, effSettings?.vsRobot, state.gameOver, state.winner, claimed, effSettings?.lobbyId]);
 
   // Prevent accidental tab close/refresh while claim required
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (!isSpectator && isPvp && state.gameOver && state.winner === 'player' && !claimed) {
+      if (!isSpectator && (isPvp || effSettings?.vsRobot) && state.gameOver && state.winner === 'player' && !claimed) {
         e.preventDefault();
         e.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [isSpectator, isPvp, state.gameOver, state.winner, claimed]);
+  }, [isSpectator, isPvp, effSettings?.vsRobot, state.gameOver, state.winner, claimed]);
 
   useEffect(() => {
     // Prevent re-initialization mid-game if state has already progressed
@@ -471,6 +701,41 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   // Restore persisted 1v1 state on mount/wallet change - only if game was in progress
   useEffect(() => {
     try {
+      // In PvP/vsRobot lobbies: do NOT restore full state from localStorage (server is authoritative),
+      // but we can apply a soft visual restore of revealed tiles so the board doesn't appear empty on refresh.
+      if (effSettings?.lobbyId && (isPvp || effSettings?.vsRobot)) {
+        const rawLobby = localStorage.getItem(LS_PVP_KEY);
+        if (rawLobby) {
+          try {
+            const saved = JSON.parse(rawLobby);
+            const currentWallet = wallet.publicKey?.toBase58?.();
+            const sameWallet = !saved?.wallet || saved.wallet === currentWallet;
+            const sameLobby = saved?.settings?.lobbyId === effSettings.lobbyId;
+            const savedTiles: any[] | undefined = saved?.state?.tiles;
+            const canPreview = sameWallet && sameLobby && Array.isArray(savedTiles) && savedTiles.some((t: any) => t?.isRevealed);
+            if (canPreview) {
+              try { console.log('1v1 restore (preview) - applying revealed tiles from localStorage while waiting for rehydrate'); } catch {}
+              setState(prev => {
+                const next = { ...prev } as GameState;
+                next.tiles = prev.tiles.map((t, i) => {
+                  const st = savedTiles[i];
+                  if (st?.isRevealed) {
+                    return { ...t, isRevealed: true, revealedBy: st.revealedBy ?? t.revealedBy ?? null } as Tile;
+                  }
+                  return t;
+                });
+                return next;
+              });
+            } else {
+              try { console.log('1v1 restore (preview) - no applicable saved tiles or lobby mismatch'); } catch {}
+            }
+          } catch (e) {
+            try { console.warn('1v1 restore (preview) parse failed:', e); } catch {}
+          }
+        }
+        // Always return: the full authoritative state comes from server rehydrate
+        return;
+      }
       const raw = localStorage.getItem(LS_PVP_KEY);
       console.log('1v1 restore attempt - localStorage:', raw);
       if (!raw) return;
@@ -495,7 +760,8 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
       };
       setState(nextState);
       if (saved.coinflip) setCoinflip(saved.coinflip);
-      if (saved.settings) setEffSettings(saved.settings as GameSettings);
+      // Only apply saved settings for solo games. For lobbies, server rehydrate is authoritative.
+      if (!effSettings?.lobbyId && saved.settings) setEffSettings(saved.settings as GameSettings);
     } catch (e) {
       console.error('1v1 restore failed:', e);
     }
@@ -523,6 +789,8 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   // Effect to handle turn progression and bot moves
   useEffect(() => {
     if (state.gameOver) return;
+    // Don't make bot moves until rehydrated to avoid turn conflicts
+    if ((isPvp || effSettings?.vsRobot) && !isRehydrated) return;
 
     // If a player has hit a bomb, their turn is skipped automatically.
     if (state.activeTurn === 'player' && state.playerHasHitBomb) {
@@ -539,8 +807,7 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
       const timeoutId = setTimeout(() => makeBotMove(), 1000);
       return () => clearTimeout(timeoutId);
     }
-  }, [state.activeTurn, state.playerHasHitBomb, state.opponentHasHitBomb, state.gameOver, isPvp, isSpectator]);
-
+  }, [state.activeTurn, state.playerHasHitBomb, state.opponentHasHitBomb, state.gameOver, isPvp, isSpectator, isRehydrated, effSettings?.vsRobot]);
 
   const processMove = (tileId: number, moveMaker: 'player' | 'opponent', force: boolean = false): void => {
     setState(prev => {
@@ -644,6 +911,11 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
 
   const handleTileClick = (tileId: number) => {
     if (isSpectator) return; // spectators cannot interact
+    // Block clicks until after rehydrate to avoid making out-of-sync moves
+    if ((isPvp || effSettings?.vsRobot) && !isRehydrated) {
+      toast({ title: 'Reconnecting...', description: 'Please wait a moment while we sync the game state.', variant: 'default' });
+      return;
+    }
     if (state.tiles[tileId].isRevealed) return;
     processMove(tileId, 'player');
     // Relay PvP move to server for other client/spectators
@@ -692,8 +964,15 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   };
 
   const handleBack = () => {
-    // If winner in PvP, force claim before leaving
-    if (!isSpectator && isPvp && state.gameOver && state.winner === 'player' && !claimed) {
+    // Block leaving while an active player during an ongoing match
+    const isActivePlayer = (!isSpectator && (isPvp || effSettings?.vsRobot) && !state.gameOver);
+    if (isActivePlayer) {
+      toast({ title: 'Match in progress', description: 'You cannot return to the lobby while the game is in progress.', variant: 'destructive' });
+      return;
+    }
+    // If winner in PvP or vs-robot, force claim before leaving
+    const mustClaim = (!isSpectator && (isPvp || effSettings?.vsRobot) && state.gameOver && state.winner === 'player' && !claimed);
+    if (mustClaim) {
       toast({ title: 'Claim required', description: 'Please claim your winnings before returning to the lobby.', variant: 'destructive' });
       return;
     }
@@ -784,11 +1063,20 @@ export default function MultiplayerMinesGame({ onBack, settings }: MultiplayerMi
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <Button variant="outline" onClick={handleBack} disabled={!isSpectator && isPvp && state.gameOver && state.winner === 'player' && !claimed}>← Back to Lobby</Button>
-          <h1 className="text-2xl font-bold">1v1 Mines</h1>
-          <Badge variant="outline"><Bomb className="w-3 h-3 mr-1" />{state.bombCount} Bombs</Badge>
-          <Badge variant="outline"><DollarSign className="w-3 h-3 mr-1" />{(state.betAmount * 2).toFixed(2)} SOL Pot</Badge>
+        <div className="mb-6 grid grid-cols-[auto_1fr_auto] items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={handleBack}
+            disabled={(!isSpectator && (isPvp || effSettings?.vsRobot) && !state.gameOver) || (!isSpectator && (isPvp || effSettings?.vsRobot) && state.gameOver && state.winner === 'player' && !claimed)}
+          >
+            ← Back to Lobby
+          </Button>
+          <h1 className="text-2xl font-bold text-center">1v1 Mines</h1>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="flex items-center"><Bomb className="w-3 h-3 mr-1" />{state.bombCount} Bombs</Badge>
+            <Badge variant="outline" className="flex items-center"><DollarSign className="w-3 h-3 mr-1" />{(state.betAmount * 2).toFixed(2)} SOL Pot</Badge>
+            <Badge variant="outline" className="flex items-center" title="Spectators"><Eye className="w-3 h-3 mr-1" />{spectatorsCount}</Badge>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

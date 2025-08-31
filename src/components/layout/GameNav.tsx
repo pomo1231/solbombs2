@@ -15,8 +15,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Menu } from 'lucide-react';
+import { useI18n } from '@/context/I18nContext';
 
 export const GameNav = () => {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') === 'solo' ? 'solo' : '1v1';
@@ -33,7 +35,7 @@ export const GameNav = () => {
     try {
       const raw = localStorage.getItem('pvp_claim_required');
       if (raw) {
-        toast({ title: 'Claim required', description: 'Please claim your 1v1 winnings before leaving.', variant: 'destructive' });
+        toast({ title: t('nav.claimRequiredTitle'), description: t('nav.claimRequiredDesc'), variant: 'destructive' });
         return false;
       }
     } catch {}
@@ -54,14 +56,14 @@ export const GameNav = () => {
           onClick={() => handleNav('solo')}
           className="rounded-full"
         >
-          Solo Mines
+          {t('nav.soloMines')}
         </Button>
         <Button
           variant={activeTab === '1v1' ? 'neon' : 'ghost'}
           onClick={() => handleNav('1v1')}
           className="rounded-full"
         >
-          1v1
+          {t('nav.pvp')}
         </Button>
       </div>
 
@@ -90,16 +92,16 @@ export const GameNav = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => { if (claimGuard()) navigate('/options'); }}>
-                Options
+                {t('nav.options')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { if (claimGuard()) navigate('/statistics'); }}>
-                Statistics
+                {t('nav.statistics')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { if (claimGuard()) navigate('/transactions'); }}>
-                Transactions
+                {t('nav.transactions')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => disconnect()}>
-                Disconnect
+                {t('nav.disconnect')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

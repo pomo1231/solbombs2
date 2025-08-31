@@ -1,10 +1,12 @@
 import React from 'react';
+import { useI18n } from '@/context/I18nContext';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
 import { WalletConnect } from '@/components/WalletConnect';
 import { Users } from 'lucide-react';
 
 export const Header = () => {
+  const { t } = useI18n();
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-12 items-center">
@@ -17,26 +19,26 @@ export const Header = () => {
               href="/provably-fair"
               className="transition-colors hover:text-foreground/80 text-foreground/60"
             >
-              Provably Fair
+              {t('header.provablyFair')}
             </a>
             <a
               href="/terms-of-service"
               className="transition-colors hover:text-foreground/80 text-foreground/60"
             >
-              Terms of Service
+              {t('header.termsOfService')}
             </a>
             <a
               href="/support"
               className="transition-colors hover:text-foreground/80 text-foreground/60"
             >
-              Support
+              {t('header.support')}
             </a>
           </nav>
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
           <div className="flex items-center text-sm font-medium text-foreground/60">
             <Users className="h-4 w-4 mr-2" />
-            <span>1,234 Online</span>
+            <span>{t('header.online', { count: '1,234' })}</span>
           </div>
           <WalletConnect />
         </div>

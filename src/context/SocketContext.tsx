@@ -23,6 +23,9 @@ interface Lobby {
     // robot support
     allowRobot?: boolean;
     vsRobotActive?: boolean;
+    // spectators
+    spectators?: string[]; // server may include session ids; use length only
+    spectatorsCount?: number; // if server decides to send only a count
 }
 
 interface ISocketContext {
@@ -43,6 +46,7 @@ interface ISocketContext {
     setGameOverHandler?: (handler: ((payload: { lobbyId: string }) => void) | undefined) => void;
     setPfFinalSeedHandler?: (handler: ((payload: { lobbyId: string; boardSeed: string; betAmount?: number; bombCount?: number; startsBy?: 'creator'|'joiner'; yourRole?: 'creator'|'joiner' }) => void) | undefined) => void;
     setWinningsClaimedHandler?: (handler: ((payload: { lobbyId: string }) => void) | undefined) => void;
+    setRehydrateHandler?: (handler: ((payload: any) => void) | undefined) => void;
 }
 
 const SocketContext = createContext<ISocketContext | undefined>(undefined);
@@ -60,6 +64,7 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
     const gameOverHandlerRef = useRef<((payload: { lobbyId: string }) => void) | undefined>(undefined);
     const pfFinalSeedHandlerRef = useRef<((payload: { lobbyId: string; boardSeed: string; betAmount?: number; bombCount?: number; startsBy?: 'creator'|'joiner'; yourRole?: 'creator'|'joiner' }) => void) | undefined>(undefined);
     const winningsClaimedHandlerRef = useRef<((payload: { lobbyId: string }) => void) | undefined>(undefined);
+    const rehydrateHandlerRef = useRef<((payload: any) => void) | undefined>(undefined);
 
     const removeLobby = (lobbyId: string) => {
         setLobbies((prev) => prev.filter(l => l.id !== lobbyId));
@@ -158,6 +163,12 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
                         const h = pfFinalSeedHandlerRef.current;
                         try { console.log('[WS] pfFinalSeed <-', data); } catch {}
                         if (h) h({ lobbyId: data.lobbyId, boardSeed: data.boardSeed, betAmount: data.betAmount, bombCount: data.bombCount, startsBy: data.startsBy, yourRole: data.yourRole });
+                        break;
+                    }
+                    case 'rehydrate': {
+                        const h = rehydrateHandlerRef.current;
+                        try { console.log('[WS] rehydrate <-', data); } catch {}
+                        if (h) h(data);
                         break;
                     }
                     case 'winningsClaimed': {
@@ -266,7 +277,7 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     return (
-        <SocketContext.Provider value={{ onlineCount, lobbies, ready, sendMessage, sendRequest, getStats, putStats, getProfile, putProfile, removeLobby, markLobbyRobotActive, setStartGameHandler: (h) => { startGameHandlerRef.current = h; }, setPvpMoveHandler: (h) => { pvpMoveHandlerRef.current = h; }, setStartSpectateHandler: (h) => { startSpectateHandlerRef.current = h; }, setGameOverHandler: (h) => { gameOverHandlerRef.current = h; }, setPfFinalSeedHandler: (h) => { pfFinalSeedHandlerRef.current = h; }, setWinningsClaimedHandler: (h) => { winningsClaimedHandlerRef.current = h; } }}>
+        <SocketContext.Provider value={{ onlineCount, lobbies, ready, sendMessage, sendRequest, getStats, putStats, getProfile, putProfile, removeLobby, markLobbyRobotActive, setStartGameHandler: (h) => { startGameHandlerRef.current = h; }, setPvpMoveHandler: (h) => { pvpMoveHandlerRef.current = h; }, setStartSpectateHandler: (h) => { startSpectateHandlerRef.current = h; }, setGameOverHandler: (h) => { gameOverHandlerRef.current = h; }, setPfFinalSeedHandler: (h) => { pfFinalSeedHandlerRef.current = h; }, setWinningsClaimedHandler: (h) => { winningsClaimedHandlerRef.current = h; }, setRehydrateHandler: (h) => { rehydrateHandlerRef.current = h; } }}>
             {children}
         </SocketContext.Provider>
     );
