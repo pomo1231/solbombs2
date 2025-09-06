@@ -23,8 +23,8 @@ export const DICTIONARIES: Record<LanguageCode, Dict> = {
     'header.support': 'Support',
     'header.online': '{{count}} Online',
     // GameNav
-    'nav.soloMines': 'Solo Mines',
-    'nav.pvp': '1v1',
+    'nav.soloMines': 'Solo Mine',
+    'nav.pvp': 'Bomb Arena',
     'nav.options': 'Options',
     'nav.statistics': 'Statistics',
     'nav.transactions': 'Transactions',

@@ -77,6 +77,7 @@ const wss = new WebSocketServer({ server: httpServer });
 let lobbies = [];
 const clients = new Map(); // ws -> clientId
 const sessionToWs = new Map(); // sessionId -> ws
+const sessionToWallet = new Map(); // sessionId -> wallet (string)
 
 // Simple file-backed storage for user stats and profiles
 // Use absolute path based on the current file location to avoid resets when CWD changes.
@@ -132,13 +133,27 @@ function broadcast(message) {
 }
 
 function broadcastOnlineCount() {
-    let count = 0;
-    sessionToWs.forEach((ws) => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            count++;
-        }
+  try {
+    // Count distinct wallets that have identified themselves
+    const wallets = new Set();
+    sessionToWallet.forEach((w, sid) => {
+      if (typeof w === 'string' && w.trim()) wallets.add(w);
     });
+    let count = wallets.size;
+    
+    // If no wallets identified yet, count active sessions instead of raw sockets
+    if (count === 0) {
+      count = 0;
+      sessionToWs.forEach((ws) => {
+        if (ws && ws.readyState === WebSocket.OPEN) count++;
+      });
+    }
+    
+    console.log(`Broadcasting online count: ${count} (${wallets.size} wallets, ${sessionToWs.size} sessions)`);
     broadcast({ type: 'onlineCount', count });
+  } catch (e) {
+    try { console.error('broadcastOnlineCount failed:', e); } catch {}
+  }
 }
 
 wss.on('connection', function connection(ws) {
@@ -151,6 +166,24 @@ wss.on('connection', function connection(ws) {
     
     console.log(`Client ${clientId} connected`);
     broadcastOnlineCount();
+
+    ws.on('close', () => {
+      try {
+        // Clean up any session mapping for this socket
+        let removed = false;
+        for (const [sid, mappedWs] of sessionToWs.entries()) {
+          if (mappedWs === ws) { sessionToWs.delete(sid); removed = true; }
+        }
+        // Also clear wallet mapping for the closed session
+        try {
+          // @ts-ignore
+          const sid = ws.sessionId;
+          if (sid) sessionToWallet.delete(sid);
+        } catch {}
+        if (removed) try { console.log('Session mapping removed on close'); } catch {}
+      } catch {}
+      broadcastOnlineCount();
+    });
 
   ws.on('message', function incoming(rawMessage) {
     let message;
@@ -172,7 +205,38 @@ wss.on('connection', function connection(ws) {
           try { existing.terminate(); } catch {}
         }
         sessionToWs.set(sid, ws);
+        // Initialize mapping without wallet until identifyWallet arrives
+        if (!sessionToWallet.has(sid)) sessionToWallet.set(sid, '');
         broadcastOnlineCount();
+        break;
+      }
+
+      case 'identifyWallet': {
+        const sid = String(message.sessionId || (/** @type {any} */(ws)).sessionId || '');
+        const wallet = typeof message.wallet === 'string' ? message.wallet : '';
+        if (sid) {
+          sessionToWallet.set(sid, wallet);
+          broadcastOnlineCount();
+        }
+        break;
+      }
+
+      case 'resetAllStats': {
+        try {
+          // Optional simple guard: require an explicit confirm flag
+          if (!message || message.confirm !== true) {
+            ws.send(JSON.stringify({ type: 'error', code: 'CONFIRM_REQUIRED', reqId: message.reqId }));
+            break;
+          }
+          userStats = {};
+          saveDb();
+          // Notify all clients so UIs can refresh/clear
+          broadcast({ type: 'statsReset' });
+          ws.send(JSON.stringify({ type: 'ok', reqId: message.reqId }));
+        } catch (e) {
+          console.error('resetAllStats failed:', e);
+          ws.send(JSON.stringify({ type: 'error', code: 'SERVER', reqId: message.reqId }));
+        }
         break;
       }
 
@@ -589,6 +653,44 @@ wss.on('connection', function connection(ws) {
         const { lobbyId, winner } = message; // winner: 'creator' | 'joiner'
         const lobby = lobbies.find(l => l.id === lobbyId);
         if (!lobby) break;
+        // Compute and persist simple stats for 1v1 participants (if wallets are known)
+        try {
+          const creatorWallet = typeof lobby.creatorWallet === 'string' ? lobby.creatorWallet : null;
+          const joinerWallet = typeof lobby.joinerWallet === 'string' ? lobby.joinerWallet : null;
+          const wager = Number(lobby.betAmount) || 0;
+          const ts = new Date().toISOString();
+          const rec = (netProfit) => ({
+            id: `pvp_${lobby.id}_${Date.now()}`,
+            timestamp: ts,
+            wageredAmount: wager,
+            netProfit: Number(netProfit) || 0,
+            multiplier: null,
+            gameMode: '1v1',
+            serverSeed: '',
+            clientSeed: '',
+            nonce: 0,
+          });
+          // Winner gets +wager, loser gets -wager
+          if (creatorWallet || joinerWallet) {
+            if (creatorWallet) {
+              const profit = winner === 'creator' ? wager : (winner === 'joiner' ? -wager : 0);
+              const u = userStats[creatorWallet] || { totalWagered: 0, gameHistory: [] };
+              u.totalWagered = (Number(u.totalWagered) || 0) + wager;
+              u.gameHistory = [rec(profit), ...(Array.isArray(u.gameHistory) ? u.gameHistory : [])].slice(0, 1000);
+              userStats[creatorWallet] = u;
+            }
+            if (joinerWallet) {
+              const profit = winner === 'joiner' ? wager : (winner === 'creator' ? -wager : 0);
+              const u = userStats[joinerWallet] || { totalWagered: 0, gameHistory: [] };
+              u.totalWagered = (Number(u.totalWagered) || 0) + wager;
+              u.gameHistory = [rec(profit), ...(Array.isArray(u.gameHistory) ? u.gameHistory : [])].slice(0, 1000);
+              userStats[joinerWallet] = u;
+            }
+            saveDb();
+          }
+        } catch (e) {
+          try { console.error('Failed to persist pvp stats on gameOver:', e); } catch {}
+        }
         // Prepare notification payload before removal
         const notify = {
           type: 'gameOver',
@@ -641,8 +743,13 @@ wss.on('connection', function connection(ws) {
 
       case 'getStats': {
         const { wallet } = message;
-        if (typeof wallet !== 'string') break;
+        console.log(`[getStats] request for wallet: ${wallet}`);
+        if (typeof wallet !== 'string') {
+          console.log(`[getStats] invalid wallet type: ${typeof wallet}`);
+          break;
+        }
         const stats = userStats[wallet] || { totalWagered: 0, gameHistory: [] };
+        console.log(`[getStats] found stats:`, stats);
         ws.send(JSON.stringify({ type: 'stats', wallet, stats, reqId: message.reqId }));
         break;
       }
@@ -672,8 +779,13 @@ wss.on('connection', function connection(ws) {
 
       case 'getProfile': {
         const { wallet } = message;
-        if (typeof wallet !== 'string') break;
+        console.log(`[getProfile] request for wallet: ${wallet}`);
+        if (typeof wallet !== 'string') {
+          console.log(`[getProfile] invalid wallet type: ${typeof wallet}`);
+          break;
+        }
         const profile = userProfiles[wallet] || null;
+        console.log(`[getProfile] found profile:`, profile);
         ws.send(JSON.stringify({ type: 'profile', wallet, profile, reqId: message.reqId }));
         break;
       }

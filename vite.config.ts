@@ -14,10 +14,12 @@ export default defineConfig(({ mode }) => ({
       "sharon-fx-hon-slight.trycloudflare.com",
       "office-wiki-enquiry-persistent.trycloudflare.com",
       "thirty-assumption-packaging-death.trycloudflare.com",
+      "specific-charleston-exhibition-things.trycloudflare.com",
+      "equal-arms-rid-waters.trycloudflare.com"
     ],
     hmr: {
       protocol: "wss",
-      host: "thirty-assumption-packaging-death.trycloudflare.com",
+      host: "equal-arms-rid-waters.trycloudflare.com",
       clientPort: 443,
     },
     proxy: {

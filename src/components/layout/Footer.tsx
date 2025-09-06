@@ -1,29 +1,44 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Twitter, MessageSquare } from 'lucide-react';
+import { Twitter, MessageSquare, Globe } from 'lucide-react';
 import { useI18n, LANG_DISPLAY } from '@/context/I18nContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
-// Real language selector using I18nContext
+// Language selector styled like the rest of the site
 const LanguageSelector = () => {
   const { language, setLanguage } = useI18n();
   const options = ['en','es','fr','pt','de'] as const;
   return (
-    <label className="inline-flex items-center gap-2 text-xs text-white/70">
-      <span className="sr-only">Language</span>
-      <select
-        aria-label="Language"
-        value={language}
-        onChange={(e) => setLanguage(e.target.value as any)}
-        className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-white/80 hover:bg-white/10 focus:outline-none"
-      >
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          aria-label="Language selector"
+          className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10 transition-colors"
+        >
+          <Globe className="w-4 h-4 text-white/80" />
+          <span className="hidden sm:inline">{LANG_DISPLAY[language]}</span>
+          <span className="sm:hidden uppercase">{language}</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="center" sideOffset={6} className="min-w-[10rem] bg-[#0b0e14] border border-white/10 text-white/90">
         {options.map((code) => (
-          <option key={code} value={code} className="bg-[#0b0f16]">
-            {LANG_DISPLAY[code]}
-          </option>
+          <DropdownMenuItem
+            key={code}
+            className={`flex items-center gap-2 text-sm focus:bg-white/10 ${language === code ? 'text-white' : 'text-white/80'}`}
+            onClick={() => setLanguage(code as any)}
+          >
+            <span className="w-5 text-center uppercase text-[10px] opacity-70">{code}</span>
+            <span>{LANG_DISPLAY[code]}</span>
+          </DropdownMenuItem>
         ))}
-      </select>
-    </label>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 
@@ -53,33 +68,48 @@ export default function Footer({ className }: { className?: string }) {
           </p>
         </div>
 
+        
+
         {/* Contacts + Socials */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
           <div className="space-y-1 text-sm text-white/80">
             <div className="flex gap-2"><span className="text-white/60 w-36">{t('footer.contactSupport')}</span> <a href="mailto:support@example.com" className="hover:underline">support@example.com</a></div>
             <div className="flex gap-2"><span className="text-white/60 w-36">{t('footer.marketing')}</span> <a href="mailto:partners@example.com" className="hover:underline">partners@example.com</a></div>
           </div>
-          <div className="flex flex-wrap gap-2 justify-start md:justify-center">
-            <Button variant="secondary" className="h-8 px-3 text-xs bg-white/5 border border-white/10 hover:bg-white/10">
-              <Twitter className="w-4 h-4 mr-1" /> {t('footer.followTwitter')}
-            </Button>
-            <Button variant="secondary" className="h-8 px-3 text-xs bg-white/5 border border-white/10 hover:bg-white/10">
-              <MessageSquare className="w-4 h-4 mr-1" /> {t('footer.joinDiscord')}
-            </Button>
+          <div className="flex flex-col items-start md:items-center gap-2">
+            <div className="flex flex-wrap gap-2 justify-start md:justify-center">
+              <Button variant="secondary" className="h-8 px-3 text-xs bg-white/5 border border-white/10 hover:bg-white/10">
+                <Twitter className="w-4 h-4 mr-1" /> {t('footer.followTwitter')}
+              </Button>
+              <Button variant="secondary" className="h-8 px-3 text-xs bg-white/5 border border-white/10 hover:bg-white/10">
+                <MessageSquare className="w-4 h-4 mr-1" /> {t('footer.joinDiscord')}
+              </Button>
+            </div>
+            {/* Move language selector here to avoid overlapping the chat bubble at bottom-right */}
+            <div className="mt-1">
+              <LanguageSelector />
+            </div>
           </div>
-          <div className="flex justify-start md:justify-end">
-            <LanguageSelector />
+          {/* Right column: important links */}
+          <div className="flex w-full md:w-auto justify-start md:justify-end">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button asChild variant="secondary" className="h-8 px-3 text-xs bg-white/5 border border-white/10 hover:bg-white/10">
+                <Link to="/provably-fair">{t('footer.provablyFair')}</Link>
+              </Button>
+              <Button asChild variant="secondary" className="h-8 px-3 text-xs bg-white/5 border border-white/10 hover:bg-white/10">
+                <Link to="/terms-of-service">{t('footer.terms')}</Link>
+              </Button>
+              <Button asChild variant="secondary" className="h-8 px-3 text-xs bg-white/5 border border-white/10 hover:bg-white/10">
+                <Link to="/support">{t('footer.support')}</Link>
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Copyright */}
         <div className="mt-6 flex items-center justify-between text-xs text-white/50">
           <span>© {new Date().getFullYear()} Solbombs. {t('footer.copyright')}</span>
-          <div className="flex gap-4">
-            <Link to="/provably-fair" className="hover:underline">{t('footer.provablyFair')}</Link>
-            <Link to="/terms-of-service" className="hover:underline">{t('footer.terms')}</Link>
-            <Link to="/support" className="hover:underline">{t('footer.support')}</Link>
-          </div>
+          <span className="hidden sm:inline" />
         </div>
       </div>
     </footer>

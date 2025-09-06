@@ -38,6 +38,8 @@ interface ISocketContext {
     putStats: (args: { wallet: string; payload: { totalWagered: number; gameHistory: any[] } }) => Promise<boolean>;
     getProfile: (wallet: string) => Promise<{ name?: string; email?: string; avatarUrl?: string; clientSeed?: string } | null>;
     putProfile: (args: { wallet: string; profile: { name?: string; email?: string; avatarUrl?: string; clientSeed?: string } }) => Promise<boolean>;
+    prefetchStats?: (wallet: string) => void;
+    prefetchProfile?: (wallet: string) => void;
     removeLobby: (lobbyId: string) => void;
     markLobbyRobotActive: (args: { lobbyId?: string; pvpGamePda?: string; gameNonce?: number }) => void;
     setStartGameHandler?: (handler: ((payload: any) => void) | undefined) => void;
@@ -53,6 +55,7 @@ const SocketContext = createContext<ISocketContext | undefined>(undefined);
 
 export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
     const { publicKey } = useWallet();
+    const sessionIdRef = useRef<string | null>(null);
     const ws = useRef<WebSocket | null>(null);
     const [onlineCount, setOnlineCount] = useState(0);
     const [lobbies, setLobbies] = useState<Lobby[]>([]);
@@ -65,6 +68,9 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
     const pfFinalSeedHandlerRef = useRef<((payload: { lobbyId: string; boardSeed: string; betAmount?: number; bombCount?: number; startsBy?: 'creator'|'joiner'; yourRole?: 'creator'|'joiner' }) => void) | undefined>(undefined);
     const winningsClaimedHandlerRef = useRef<((payload: { lobbyId: string }) => void) | undefined>(undefined);
     const rehydrateHandlerRef = useRef<((payload: any) => void) | undefined>(undefined);
+    const statsCache = useRef(new Map<string, { data: { totalWagered: number; gameHistory: any[] }, ts: number }>());
+    const profileCache = useRef(new Map<string, { data: any, ts: number }>());
+    const CACHE_TTL_MS = 60_000; // 60 seconds
 
     const removeLobby = (lobbyId: string) => {
         setLobbies((prev) => prev.filter(l => l.id !== lobbyId));
@@ -106,10 +112,19 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
                     const sidKey = 'sessionId';
                     let sid = localStorage.getItem(sidKey);
                     if (!sid) { sid = crypto.randomUUID(); localStorage.setItem(sidKey, sid); }
+                    sessionIdRef.current = sid;
                     ws.current?.send(JSON.stringify({ type: 'hello', sessionId: sid }));
                 } catch {}
                 // Request initial lobby list on connect
                 try { ws.current?.send(JSON.stringify({ type: 'getLobbies' })); } catch {}
+                // Identify wallet if already connected
+                try {
+                    const walletStr = publicKey?.toBase58?.();
+                    const sid = sessionIdRef.current;
+                    if (walletStr && sid) {
+                        ws.current?.send(JSON.stringify({ type: 'identifyWallet', sessionId: sid, wallet: walletStr }));
+                    }
+                } catch {}
             };
 
             ws.current.onclose = () => {
@@ -227,6 +242,17 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
         // Do not forcibly close the singleton on unmount; let server heartbeat detect stale tabs
         return () => {};
     }, []);
+
+    // Re-identify wallet to the server whenever the connected wallet changes
+    useEffect(() => {
+        try {
+            const walletStr = publicKey?.toBase58?.();
+            const sid = sessionIdRef.current || localStorage.getItem('sessionId');
+            if (ws.current && ws.current.readyState === WebSocket.OPEN && sid) {
+                ws.current.send(JSON.stringify({ type: 'identifyWallet', sessionId: sid, wallet: walletStr || '' }));
+            }
+        } catch {}
+    }, [publicKey]);
     
     const sendMessage = (message: object) => {
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
@@ -244,9 +270,28 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
     const getStats = async (wallet: string) => {
         try {
+            const now = Date.now();
+            const cached = statsCache.current.get(wallet);
+            if (cached && (now - cached.ts) < CACHE_TTL_MS) {
+                // return immediately with cached, and refresh in background
+                // no await: fire-and-forget refresh
+                (async () => {
+                    try {
+                        const fresh: any = await sendRequest('getStats', { wallet });
+                        if (fresh && fresh.stats) statsCache.current.set(wallet, { data: fresh.stats, ts: Date.now() });
+                    } catch {}
+                })();
+                return cached.data;
+            }
+            // no fresh cache; fetch
             const res: any = await sendRequest('getStats', { wallet });
-            if (res && res.stats) return res.stats;
-        } catch {}
+            if (res && res.stats) {
+                statsCache.current.set(wallet, { data: res.stats, ts: now });
+                return res.stats;
+            }
+        } catch (e) {
+            console.error('[SocketContext] getStats error:', e);
+        }
         return null;
     };
 
@@ -261,13 +306,56 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
     const getProfile = async (wallet: string) => {
         try {
+            const now = Date.now();
+            const cached = profileCache.current.get(wallet);
+            if (cached && (now - cached.ts) < CACHE_TTL_MS) {
+                // refresh in background
+                (async () => {
+                    try {
+                        const fresh: any = await sendRequest('getProfile', { wallet });
+                        if (fresh && fresh.profile) profileCache.current.set(wallet, { data: fresh.profile, ts: Date.now() });
+                    } catch {}
+                })();
+                return cached.data;
+            }
             const res: any = await sendRequest('getProfile', { wallet });
-            if (res && Object.prototype.hasOwnProperty.call(res, 'profile')) return res.profile || null;
-        } catch {}
+            if (res && res.profile) {
+                profileCache.current.set(wallet, { data: res.profile, ts: now });
+                return res.profile;
+            }
+        } catch (e) {
+            console.error('[SocketContext] getProfile error:', e);
+        }
         return null;
     };
 
-    const putProfile = async ({ wallet, profile }: { wallet: string; profile: { name?: string; email?: string; avatarUrl?: string; clientSeed?: string } }) => {
+    const prefetchStats = (wallet: string) => {
+        if (!wallet) return;
+        const cached = statsCache.current.get(wallet);
+        const now = Date.now();
+        if (cached && (now - cached.ts) < CACHE_TTL_MS) return;
+        (async () => {
+            try {
+                const res: any = await sendRequest('getStats', { wallet });
+                if (res && res.stats) statsCache.current.set(wallet, { data: res.stats, ts: Date.now() });
+            } catch {}
+        })();
+    };
+
+    const prefetchProfile = (wallet: string) => {
+        if (!wallet) return;
+        const cached = profileCache.current.get(wallet);
+        const now = Date.now();
+        if (cached && (now - cached.ts) < CACHE_TTL_MS) return;
+        (async () => {
+            try {
+                const res: any = await sendRequest('getProfile', { wallet });
+                if (res && res.profile) profileCache.current.set(wallet, { data: res.profile, ts: Date.now() });
+            } catch {}
+        })();
+    };
+
+    const putProfile = async ({ wallet, profile }: { wallet: string; profile: any }) => {
         try {
             await sendRequest('putProfile', { wallet, profile });
             return true;
@@ -277,7 +365,7 @@ export const SocketProvider: FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     return (
-        <SocketContext.Provider value={{ onlineCount, lobbies, ready, sendMessage, sendRequest, getStats, putStats, getProfile, putProfile, removeLobby, markLobbyRobotActive, setStartGameHandler: (h) => { startGameHandlerRef.current = h; }, setPvpMoveHandler: (h) => { pvpMoveHandlerRef.current = h; }, setStartSpectateHandler: (h) => { startSpectateHandlerRef.current = h; }, setGameOverHandler: (h) => { gameOverHandlerRef.current = h; }, setPfFinalSeedHandler: (h) => { pfFinalSeedHandlerRef.current = h; }, setWinningsClaimedHandler: (h) => { winningsClaimedHandlerRef.current = h; }, setRehydrateHandler: (h) => { rehydrateHandlerRef.current = h; } }}>
+        <SocketContext.Provider value={{ onlineCount, lobbies, ready, sendMessage, sendRequest, getStats, putStats, getProfile, putProfile, prefetchStats, prefetchProfile, removeLobby, markLobbyRobotActive, setStartGameHandler: (h) => { startGameHandlerRef.current = h; }, setPvpMoveHandler: (h) => { pvpMoveHandlerRef.current = h; }, setStartSpectateHandler: (h) => { startSpectateHandlerRef.current = h; }, setGameOverHandler: (h) => { gameOverHandlerRef.current = h; }, setPfFinalSeedHandler: (h) => { pfFinalSeedHandlerRef.current = h; }, setWinningsClaimedHandler: (h) => { winningsClaimedHandlerRef.current = h; }, setRehydrateHandler: (h) => { rehydrateHandlerRef.current = h; } }}>
             {children}
         </SocketContext.Provider>
     );
